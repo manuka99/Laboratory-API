@@ -12,13 +12,13 @@ exports.GeneralAccountAuthRoutes = (app) => {
     GeneralAccountEndpoint.ResetPassword
   );
 
-  app.post(
+  app.patch(
     "/api/auth/general/update-temp-phone",
     GeneralAccountEndpoint.UpdateTempPhone
   );
 
   app.patch(
-    "/api/public/general/update-phone",
+    "/api/auth/general/update-phone",
     GeneralAccountEndpoint.VerifyAndUpdatePhone
   );
 

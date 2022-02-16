@@ -32,7 +32,6 @@ const GeneralAccountSchema = new Schema(
     tempPhone: {
       type: String,
       unique: true,
-      select: false,
       expires: 60 * 15,
     },
     email: {

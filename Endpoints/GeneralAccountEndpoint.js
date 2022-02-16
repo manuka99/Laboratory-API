@@ -197,7 +197,7 @@ exports.UpdateTempPhone = async (req, res, next) => {
     .then(() => ValidateRequest(req))
     .catch(next);
 
-  if (req.user.tphone_verify_token)
+  if (req.user.tempPhone == temp_phone && req.user.tphone_verify_token)
     return sendError(res, {
       message:
         "A verfication code has already been sent to this device, please request a new code after 15 minutes.",
@@ -239,54 +239,40 @@ exports.UpdateTempPhone = async (req, res, next) => {
     );
 };
 
-// post
+// patch
 exports.VerifyAndUpdatePhone = async (req, res, next) => {
-  const { verification_code, nationalID } = req.body;
+  const { verification_code } = req.body;
 
   await Validation.number("verification_code", 6, 6).run(req);
-  await Validation.text("nationalID", 4, 20).run(req);
 
   await Promise.resolve()
     .then(() => ValidateRequest(req))
     .catch(next);
 
   const hashed_verification_code = sha256(verification_code.toString());
-  // match nic and reset code
-  GeneralAccountDao.findUser({
-    nationalID,
-    tphone_verify_token: hashed_verification_code,
-  }, true)
-    .then((user) => {
-      if (!user)
-        return sendError(res, {
-          message:
-            "No account associated with the provided National ID/Verification Code",
-        });
 
-      // update password
-      GeneralAccountDao.update(user._id, {
-        phone: user.tempPhone,
-        tempPhone: null,
-        tphone_verify_token: null,
-        phone_verified_at: new Date(),
-      })
-        .then(async () => {
-          return sendSuccess(res, {
-            message: "Phone number was updated successfully",
-          });
-        })
-        .catch(() =>
-          sendError(res, {
-            message: "Error: Phone number was not updated",
-          })
-        );
+  if (req.user.tphone_verify_token == hashed_verification_code) {
+    // update phone
+    GeneralAccountDao.update(req.user._id, {
+      phone: req.user.tempPhone,
+      tempPhone: null,
+      tphone_verify_token: null,
+      phone_verified_at: new Date(),
     })
-    .catch(() =>
-      sendError(res, {
-        message:
-          "No account associated with the provided National ID/Verification Code",
+      .then(async () => {
+        return sendSuccess(res, {
+          message: "Phone number was updated successfully",
+        });
       })
-    );
+      .catch(() =>
+        sendError(res, {
+          message: "Error: Phone number was not updated",
+        })
+      );
+  } else
+    sendError(res, {
+      message: "Verification Code does not match or expired",
+    });
 };
 
 // patch
