@@ -1,7 +1,7 @@
 const GeneralAccount = require("../Schemas/Users/GeneralAccount");
 
 const allSecureEntries =
-  "+tempPhone +password +transactionPassword +two_factor_secret +email_verify_token +pwd_recovery_token";
+  "+tempPhone +password +transactionPassword +two_factor_secret +email_verify_token +pwd_recovery_token +tphone_verify_token";
 
 exports.findUsers = async (query, getALL = false) => {
   var users;

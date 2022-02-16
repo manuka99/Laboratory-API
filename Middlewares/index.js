@@ -5,15 +5,17 @@ const { TokenValidator } = require("./TokenValidator");
 const { TwoFactorAuthorized } = require("./TwoFactorAuthorized");
 const { AccountApproved } = require("./AccountApproved");
 const { AccountUnlocked } = require("./AccountUnlocked");
+const { PhoneVerified } = require("./PhoneVerified");
 
 exports.AppMiddlewares = (app) => {
   /* VALIDATE TOKEN */
   app.all("*", TokenValidator);
 
   /* Guest routes */
+  // not logged in
   app.use("/api/guest/", GuestUser);
 
-  /* AUTHENTICATION (without two factor) */
+  /* AUTHENTICATION (without two factor, approved, unlocked) */
   app.use("/api/auth/", Authenticate());
   app.use("/api/auth/general/", Authenticate(UserEnum.GENERAL));
   app.use("/api/auth/admin/", Authenticate(UserEnum.SERVICE));
@@ -26,7 +28,8 @@ exports.AppMiddlewares = (app) => {
     Authenticate(UserEnum.GENERAL),
     TwoFactorAuthorized,
     AccountApproved,
-    AccountUnlocked
+    AccountUnlocked,
+    PhoneVerified
   );
 
   // For Service Accounts
@@ -35,6 +38,7 @@ exports.AppMiddlewares = (app) => {
     Authenticate(UserEnum.SERVICE),
     TwoFactorAuthorized,
     AccountApproved,
-    AccountUnlocked
+    AccountUnlocked,
+    PhoneVerified
   );
 };

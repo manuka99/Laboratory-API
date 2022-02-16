@@ -5,6 +5,7 @@ const ErrorCodeEnum = Object.freeze({
   TWO_FACTOR_AUTH: "TWO_FACTOR_AUTH",
   ACCOUNT_LOCKED: "ACCOUNT_LOCKED",
   ACCOUNT_APPROVAL: "ACCOUNT_APPROVAL",
+  PHONE_VERIFICATION: "PHONE_VERIFICATION",
 });
 
 module.exports = { ErrorCodeEnum };

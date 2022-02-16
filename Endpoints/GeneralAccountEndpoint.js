@@ -67,7 +67,6 @@ exports.Login = (req, res, next) => {
       user.password = null;
       var token = await user.getSignedJwtToken(req, false);
       return sendSuccess(res, {
-        user,
         message: "Success user login",
         token,
       });
@@ -184,6 +183,108 @@ exports.ResetPassword = async (req, res, next) => {
       sendError(res, {
         message:
           "No account associated with the provided National ID/Reset Code",
+      })
+    );
+};
+
+// post
+exports.UpdateTempPhone = async (req, res, next) => {
+  const { temp_phone } = req.body;
+
+  await Validation.number("temp_phone", 9, 13).run(req);
+
+  await Promise.resolve()
+    .then(() => ValidateRequest(req))
+    .catch(next);
+
+  if (req.user.tphone_verify_token)
+    return sendError(res, {
+      message:
+        "A verfication code has already been sent to this device, please request a new code after 15 minutes.",
+    });
+
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  console.log(code);
+  const hashedCode = sha256(code);
+
+  GeneralAccountDao.update(req.user._id, {
+    tphone_verify_token: hashedCode,
+    tempPhone: temp_phone,
+  })
+    .then(() => {
+      // send sms
+      var smsLink = `https://www.textit.biz/sendmsg/?id=${SMS_NUMBER}&pw=${SMS_PASS}s&to=${temp_phone}&text=Code+is+${code}`;
+      axios
+        .get(smsLink)
+        .then((smsRes) => {
+          if (smsRes.data && smsRes.data.split(",") > 2)
+            return sendSuccess(res, {
+              message: "Verification code was sent successfully",
+            });
+          else
+            return sendError(res, {
+              message: "Error when sending verification code",
+            });
+        })
+        .catch(() => {
+          return sendError(res, {
+            message: "Error when sending verification code",
+          });
+        });
+    })
+    .catch(() =>
+      sendError(res, {
+        message: "Error when generating verification code, try again latter.",
+      })
+    );
+};
+
+// post
+exports.VerifyAndUpdatePhone = async (req, res, next) => {
+  const { verification_code, nationalID } = req.body;
+
+  await Validation.number("verification_code", 6, 6).run(req);
+  await Validation.text("nationalID", 4, 20).run(req);
+
+  await Promise.resolve()
+    .then(() => ValidateRequest(req))
+    .catch(next);
+
+  const hashed_verification_code = sha256(verification_code.toString());
+  // match nic and reset code
+  GeneralAccountDao.findUser({
+    nationalID,
+    tphone_verify_token: hashed_verification_code,
+  }, true)
+    .then((user) => {
+      if (!user)
+        return sendError(res, {
+          message:
+            "No account associated with the provided National ID/Verification Code",
+        });
+
+      // update password
+      GeneralAccountDao.update(user._id, {
+        phone: user.tempPhone,
+        tempPhone: null,
+        tphone_verify_token: null,
+        phone_verified_at: new Date(),
+      })
+        .then(async () => {
+          return sendSuccess(res, {
+            message: "Phone number was updated successfully",
+          });
+        })
+        .catch(() =>
+          sendError(res, {
+            message: "Error: Phone number was not updated",
+          })
+        );
+    })
+    .catch(() =>
+      sendError(res, {
+        message:
+          "No account associated with the provided National ID/Verification Code",
       })
     );
 };
@@ -323,7 +424,6 @@ exports.Authorize2FA = async (req, res, next) => {
         user.two_factor_secret = null;
         var token = await user.getSignedJwtToken(req, true);
         return sendSuccess(res, {
-          user,
           message: "Success 2fa login",
           token,
         });

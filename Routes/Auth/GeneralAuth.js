@@ -12,6 +12,16 @@ exports.GeneralAccountAuthRoutes = (app) => {
     GeneralAccountEndpoint.ResetPassword
   );
 
+  app.post(
+    "/api/auth/general/update-temp-phone",
+    GeneralAccountEndpoint.UpdateTempPhone
+  );
+
+  app.patch(
+    "/api/public/general/update-phone",
+    GeneralAccountEndpoint.VerifyAndUpdatePhone
+  );
+
   /* Authorized Routes */
   app.post(
     "/api/auth/general/authorize2fa",
@@ -21,7 +31,7 @@ exports.GeneralAccountAuthRoutes = (app) => {
   app.post("/api/auth/general/activate2fa", GeneralAccountEndpoint.Activate2FA);
 
   // General
-  app.post(
+  app.patch(
     "/api/general/update-password",
     GeneralAccountEndpoint.UpdateAccountPassword
   );
