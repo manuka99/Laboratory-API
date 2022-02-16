@@ -29,6 +29,12 @@ const GeneralAccountSchema = new Schema(
       unique: true,
       required: [true, "Contact number must not be empty."],
     },
+    tempPhone: {
+      type: String,
+      unique: true,
+      select: false,
+      expires: 3600,
+    },
     email: {
       type: String,
       required: [true, "Email must not be empty."],
@@ -95,6 +101,7 @@ const GeneralAccountSchema = new Schema(
       default: false,
     },
     email_verify_token: { type: String, select: false, expires: 600 },
+    tphone_verify_token: { type: String, select: false, expires: 600 },
     phone_verified_at: Date,
     email_verified_at: Date,
     pwd_recovery_token: { type: String, select: false, expires: 600 },

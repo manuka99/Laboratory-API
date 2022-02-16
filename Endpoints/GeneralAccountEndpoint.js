@@ -49,7 +49,7 @@ exports.Login = (req, res, next) => {
   const { nationalID, raw_password } = req.body;
 
   // match email
-  GeneralAccountDao.findUserByNICWithPassword(nationalID)
+  GeneralAccountDao.findUser({ nationalID }, true)
     .then(async (user) => {
       if (!user)
         return sendError(res, {
@@ -79,11 +79,17 @@ exports.Login = (req, res, next) => {
 exports.RecoverPassword = (req, res, next) => {
   const { nationalID } = req.body;
 
-  GeneralAccountDao.findUser({ nationalID })
+  GeneralAccountDao.findUser({ nationalID }, true)
     .then((user) => {
       if (!user)
         return sendError(res, {
-          message: "No account associated with the provided National ID. se",
+          message: "No account associated with the provided National ID.",
+        });
+
+      if (user.pwd_recovery_token)
+        return sendError(res, {
+          message:
+            "A recovery code has already been sent to this account, please request a new code after 10 minutes.",
         });
 
       const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -123,7 +129,7 @@ exports.RecoverPassword = (req, res, next) => {
     })
     .catch(() =>
       sendError(res, {
-        message: "No account associated with the provided National ID. s",
+        message: "No account associated with the provided National ID.",
       })
     );
 };
@@ -214,7 +220,7 @@ exports.UpdateAccountPassword = (req, res, next) => {
     .catch((err) =>
       sendError(res, {
         message: "Error: Password was not updated",
-        err
+        err,
       })
     );
 };
@@ -224,7 +230,7 @@ exports.UpdateTxPassword = (req, res, next) => {
   const { _id } = req.user;
   const { pwd_confirm_exp } = req.user.user_jwt;
 
-  console.log("pwd_confirm_exp", pwd_confirm_exp)
+  console.log("pwd_confirm_exp", pwd_confirm_exp);
 
   if (!pwd_confirm_exp || pwd_confirm_exp < new Date())
     return sendError(
@@ -257,7 +263,7 @@ exports.UpdateTxPassword = (req, res, next) => {
 // post
 exports.ConfirmPassword = (req, res, next) => {
   const { raw_password } = req.body;
-  GeneralAccountDao.findUserById(req.user._id, true)
+  GeneralAccountDao.findUser({ _id: req.user._id }, true)
     .then((user) => {
       const isMatch = user.matchPasswords(raw_password);
       if (!isMatch)
@@ -300,7 +306,7 @@ exports.Authorize2FA = async (req, res, next) => {
       message: "Two factor authentication is not activated for this account",
     });
 
-  GeneralAccountDao.findUserByNICWith2faSecret(loggedUser.nationalID)
+  GeneralAccountDao.findUser({ nationalID: loggedUser.nationalID }, true)
     .then(async (user) => {
       if (!user)
         return sendError(res, {

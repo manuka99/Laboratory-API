@@ -26,7 +26,10 @@ exports.TokenValidator = async (req, res, next) => {
     if (!UserDao) throw new Error("Invalid user type!");
 
     // fetch user by decoded rtoken user id
-    const user = await UserDao.findUserById(decodedUserData.user_id, true);
+    const user = await UserDao.findUser(
+      { _id: decodedUserData.user_id },
+      true
+    );
 
     // invalid user
     if (!user) throw new Error("Invalid user!");

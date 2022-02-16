@@ -1,25 +1,21 @@
 const GeneralAccount = require("../Schemas/Users/GeneralAccount");
 
-exports.findUserById = async (id, getALL = false) => {
-  if (getALL) {
-    var user = await GeneralAccount.findById(id).select(
-      "+password +transactionPassword +two_factor_secret +email_verify_token +pwd_recovery_token"
-    );
-    return user;
-  } else {
-    var user = await GeneralAccount.findById(id);
-    return user;
-  }
-};
+const allSecureEntries =
+  "+tempPhone +password +transactionPassword +two_factor_secret +email_verify_token +pwd_recovery_token";
 
-exports.findUsers = async (query) => {
-  var users = await GeneralAccount.find(query);
+exports.findUsers = async (query, getALL = false) => {
+  var users;
+  if (getALL) users = await GeneralAccount.find(query).select(allSecureEntries);
+  else users = await GeneralAccount.find(query);
   return users;
 };
 
-exports.findUser = async (query) => {
-  var users = await GeneralAccount.findOne(query);
-  return users;
+exports.findUser = async (query, getALL = false) => {
+  var user;
+  if (getALL)
+    user = await GeneralAccount.findOne(query).select(allSecureEntries);
+  else user = await GeneralAccount.findOne(query);
+  return user;
 };
 
 exports.create = async (data) => {
@@ -32,18 +28,4 @@ exports.update = async (_id, data) => {
     new: true,
   });
   return user;
-};
-
-exports.findUserByNICWithPassword = async (nationalID) => {
-  var generalAccount = await GeneralAccount.findOne({
-    nationalID,
-  }).select("+password");
-  return generalAccount;
-};
-
-exports.findUserByNICWith2faSecret = async (nationalID) => {
-  var generalAccount = await GeneralAccount.findOne({
-    nationalID,
-  }).select("+two_factor_secret");
-  return generalAccount;
 };
