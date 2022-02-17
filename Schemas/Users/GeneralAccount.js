@@ -24,6 +24,10 @@ const GeneralAccountSchema = new Schema(
       required: true,
       unique: true,
     },
+    dateOfBirth: {
+      type: String,
+      required: true,
+    },
     phone: {
       type: String,
       unique: true,
