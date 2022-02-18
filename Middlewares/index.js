@@ -33,12 +33,12 @@ exports.AppMiddlewares = (app) => {
   );
 
   // For Service Accounts
-  app.use(
-    "/api/admin/",
-    Authenticate(UserEnum.SERVICE),
-    TwoFactorAuthorized,
-    AccountApproved,
-    AccountUnlocked,
-    PhoneVerified
-  );
+  // app.use(
+  //   "/api/admin/",
+  //   Authenticate(UserEnum.SERVICE),
+  //   TwoFactorAuthorized,
+  //   AccountApproved,
+  //   AccountUnlocked,
+  //   PhoneVerified
+  // );
 };

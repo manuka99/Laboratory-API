@@ -2,7 +2,7 @@ const { sendError } = require("../Common/util");
 const { ErrorCodeEnum } = require("../Models/ErrorModel");
 
 exports.PhoneVerified = async (req, res, next) => {
-  if (req.user && req.user.phone_verified_at) return next();
+  if (req.user && req.jwtTokenData.isMobileAuthorized) return next();
   return sendError(
     res,
     {

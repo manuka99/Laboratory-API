@@ -10,13 +10,30 @@ const { Validation } = require("../Validation");
 const { ValidateRequest } = require("../Middlewares/ValidateRequest");
 const bcrypt = require("bcrypt");
 
-exports.Registration = (req, res, next) => {
+const pwd_rtoken_exp_at_minutes = 15;
+const phone_vtoken_exp_at_minutes = 15;
+const tphone_vtoken_exp_at_minutes = 15;
+const email_vtoken_exp_at_minutes = 15;
+const pwd_verify_exp_at_minutes = 30;
+const phone_verify_exp_at_minutes = 30;
+const twoFA_verify_exp_at_minutes = 30;
+
+exports.Registration = async (req, res, next) => {
   const {
     firstName,
+    middleName,
     lastName,
+    gender,
     nationalID,
+    dateOfBirth,
     phone,
     email,
+    street,
+    province,
+    district,
+    country,
+    nationality,
+    zipCode,
     address,
     raw_password,
     raw_transactionPassword,
@@ -28,10 +45,19 @@ exports.Registration = (req, res, next) => {
 
   GeneralAccountDao.create({
     firstName,
+    middleName,
     lastName,
+    gender,
     nationalID,
+    dateOfBirth,
     phone,
     email,
+    street,
+    province,
+    district,
+    country,
+    nationality,
+    zipCode,
     address,
     password: encrypted_pwd,
     transactionPassword: encrypted_tx_pwd,
@@ -45,7 +71,7 @@ exports.Registration = (req, res, next) => {
     .catch(next);
 };
 
-exports.Login = (req, res, next) => {
+exports.Login = async (req, res, next) => {
   const { nationalID, raw_password } = req.body;
 
   // match email
@@ -65,17 +91,20 @@ exports.Login = (req, res, next) => {
 
       // return jwt token
       user.password = null;
-      var token = await user.getSignedJwtToken(req, false);
+      var token = await user.getSignedJwtToken(req, false, {
+        pwd_verify_exp_at: new Date(new Date().getTime() + 60000 * 30),
+      });
       return sendSuccess(res, {
         message: "Success user login",
         token,
+        user: user.getLoggedUser(),
       });
     })
     .catch(next);
 };
 
 // post
-exports.RecoverPassword = (req, res, next) => {
+exports.RecoverPassword = async (req, res, next) => {
   const { nationalID } = req.body;
 
   GeneralAccountDao.findUser({ nationalID }, true)
@@ -85,18 +114,20 @@ exports.RecoverPassword = (req, res, next) => {
           message: "No account associated with the provided National ID.",
         });
 
-      if (user.pwd_recovery_token)
+      if (user.pwd_recovery_token && user.pwd_rtoken_exp_at > new Date())
         return sendError(res, {
-          message:
-            "A recovery code has already been sent to this account, please request a new code after 10 minutes.",
+          message: `A recovery code has already been sent to this account, please request a new code after ${pwd_rtoken_exp_at_minutes} minutes.`,
         });
 
       const code = Math.floor(100000 + Math.random() * 900000).toString();
-      console.log(code);
       const hashedCode = sha256(code);
+      const pwd_rtoken_exp_at = new Date(
+        new Date().getTime() + 60 * 1000 * pwd_rtoken_exp_at_minutes
+      ); //in milliseconds
 
       GeneralAccountDao.update(user._id, {
         pwd_recovery_token: hashedCode,
+        pwd_rtoken_exp_at,
       })
         .then(() => {
           // send sms
@@ -109,8 +140,9 @@ exports.RecoverPassword = (req, res, next) => {
                   message: "Authorization code was sent successfully",
                 });
               else
-                return sendError(res, {
+                return sendSuccess(res, {
                   message: "Error when sending authorization code",
+                  code,
                 });
             })
             .catch(() => {
@@ -158,15 +190,21 @@ exports.ResetPassword = async (req, res, next) => {
             "No account associated with the provided National ID/Reset Code",
         });
 
+      if (user.pwd_rtoken_exp_at > new Date())
+        return sendError(res, {
+          message: "This recovery code has been expired, request another code.",
+        });
+
       const encrypted_pwd = bcrypt.hashSync(raw_password, 12);
       // update password
       GeneralAccountDao.update(user._id, {
         password: encrypted_pwd,
         pwd_recovery_token: null,
+        pwd_rtoken_exp_at: null,
       })
         .then(async () => {
           JWTTokenDao.invalidateTokensOfUser(user._id);
-          var token = await user.getSignedJwtToken(req, false);
+          var token = await user.getSignedJwtToken(req);
           return sendSuccess(res, {
             user,
             message: "Password was updated successfully",
@@ -189,6 +227,7 @@ exports.ResetPassword = async (req, res, next) => {
 
 // post
 exports.UpdateTempPhone = async (req, res, next) => {
+  const loggedUser = req.user;
   const { temp_phone } = req.body;
 
   await Validation.number("temp_phone", 9, 13).run(req);
@@ -197,19 +236,25 @@ exports.UpdateTempPhone = async (req, res, next) => {
     .then(() => ValidateRequest(req))
     .catch(next);
 
-  if (req.user.tempPhone == temp_phone && req.user.tphone_verify_token)
+  if (
+    loggedUser.tempPhone == temp_phone &&
+    loggedUser.tphone_verify_token &&
+    loggedUser.tphone_vtoken_exp_at > new Date()
+  )
     return sendError(res, {
-      message:
-        "A verfication code has already been sent to this device, please request a new code after 15 minutes.",
+      message: `A verfication code has already been sent to this device, please request a new code after ${tphone_vtoken_exp_at_minutes} minutes.`,
     });
 
   const code = Math.floor(100000 + Math.random() * 900000).toString();
-  console.log(code);
   const hashedCode = sha256(code);
+  const tphone_vtoken_exp_at = new Date(
+    new Date().getTime() + 60 * 1000 * tphone_vtoken_exp_at_minutes
+  ); //in milliseconds
 
-  GeneralAccountDao.update(req.user._id, {
+  GeneralAccountDao.update(loggedUser._id, {
     tphone_verify_token: hashedCode,
     tempPhone: temp_phone,
+    tphone_vtoken_exp_at,
   })
     .then(() => {
       // send sms
@@ -222,8 +267,9 @@ exports.UpdateTempPhone = async (req, res, next) => {
               message: "Verification code was sent successfully",
             });
           else
-            return sendError(res, {
+            return sendSuccess(res, {
               message: "Error when sending verification code",
+              code,
             });
         })
         .catch(() => {
@@ -251,12 +297,16 @@ exports.VerifyAndUpdatePhone = async (req, res, next) => {
 
   const hashed_verification_code = sha256(verification_code.toString());
 
-  if (req.user.tphone_verify_token == hashed_verification_code) {
+  if (
+    req.user.tphone_verify_token == hashed_verification_code &&
+    req.user.tphone_vtoken_exp_at > new Date()
+  ) {
     // update phone
     GeneralAccountDao.update(req.user._id, {
       phone: req.user.tempPhone,
       tempPhone: null,
       tphone_verify_token: null,
+      tphone_vtoken_exp_at: null,
       phone_verified_at: new Date(),
     })
       .then(async () => {
@@ -276,11 +326,11 @@ exports.VerifyAndUpdatePhone = async (req, res, next) => {
 };
 
 // patch
-exports.UpdateAccountPassword = (req, res, next) => {
+exports.UpdateAccountPassword = async (req, res, next) => {
   const { _id } = req.user;
-  const { pwd_confirm_exp } = req.user.user_jwt;
+  const { pwd_verify_exp_at } = req.jwtTokenData;
 
-  if (!pwd_confirm_exp || pwd_confirm_exp < new Date())
+  if (!pwd_verify_exp_at || pwd_verify_exp_at < new Date())
     return sendError(
       res,
       {
@@ -298,7 +348,7 @@ exports.UpdateAccountPassword = (req, res, next) => {
   GeneralAccountDao.update(_id, { password: encrypted_pwd })
     .then(async (user) => {
       JWTTokenDao.invalidateTokensOfUser(_id);
-      var token = await user.getSignedJwtToken(req, false);
+      var token = await user.getSignedJwtToken(req, req.jwtToken);
       return sendSuccess(res, {
         message: "Password was updated successfully",
         token,
@@ -313,13 +363,11 @@ exports.UpdateAccountPassword = (req, res, next) => {
 };
 
 // patch
-exports.UpdateTxPassword = (req, res, next) => {
+exports.UpdateTxPassword = async (req, res, next) => {
   const { _id } = req.user;
-  const { pwd_confirm_exp } = req.user.user_jwt;
+  const { pwd_verify_exp_at } = req.jwtTokenData;
 
-  console.log("pwd_confirm_exp", pwd_confirm_exp);
-
-  if (!pwd_confirm_exp || pwd_confirm_exp < new Date())
+  if (!pwd_verify_exp_at || pwd_verify_exp_at < new Date())
     return sendError(
       res,
       {
@@ -348,40 +396,119 @@ exports.UpdateTxPassword = (req, res, next) => {
 };
 
 // post
-exports.ConfirmPassword = (req, res, next) => {
+exports.ConfirmPassword = async (req, res, next) => {
+  const loggedUser = req.user;
   const { raw_password } = req.body;
-  GeneralAccountDao.findUser({ _id: req.user._id }, true)
-    .then((user) => {
-      const isMatch = user.matchPasswords(raw_password);
-      if (!isMatch)
-        return sendError(res, {
-          message: "Password is incorrect",
-        });
 
-      const pwd_confirm_exp = new Date(new Date().getTime() + 15 * 60000);
-      JWTTokenDao.ConfirmPassword(req.user.user_jwt._id, pwd_confirm_exp)
-        .then(() =>
-          sendSuccess(res, {
-            message: "Password was confirmed",
-          })
-        )
-        .catch(() =>
-          sendError(res, {
-            message: "Failed to confirm password.",
-          })
-        );
-    })
-    .catch(() =>
-      sendError(res, {
-        message: "Error: Account does not exist",
-      })
-    );
+  const isMatch = loggedUser.matchPasswords(raw_password);
+  if (!isMatch)
+    return sendError(res, {
+      message: "Password is incorrect",
+    });
+
+  var token = await loggedUser.getSignedJwtToken(req, req.jwtToken, {
+    pwd_verify_exp_at: new Date(
+      new Date().getTime() + 60000 * pwd_verify_exp_at_minutes
+    ),
+  });
+
+  sendSuccess(res, {
+    message: "Password was confirmed",
+    token,
+    user: loggedUser.getLoggedUser(),
+  });
 };
 
-exports.Authorize2FA = async (req, res, next) => {
+// post
+exports.ConfirmMobileRequest = async (req, res, next) => {
+  const loggedUser = req.user;
+
+  if (
+    !loggedUser.phone_vtoken_exp_at ||
+    loggedUser.phone_vtoken_exp_at < new Date()
+  ) {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedCode = sha256(code);
+    const phone_vtoken_exp_at = new Date(
+      new Date().getTime() + 60 * 1000 * phone_vtoken_exp_at_minutes
+    );
+
+    GeneralAccountDao.update(loggedUser._id, {
+      phone_verify_token: hashedCode,
+      phone_vtoken_exp_at,
+    })
+      .then(() => {
+        // send sms
+        var smsLink = `https://www.textit.biz/sendmsg/?id=${SMS_NUMBER}&pw=${SMS_PASS}s&to=${loggedUser.phone}&text=Code+is+${code}`;
+        axios
+          .get(smsLink)
+          .then((smsRes) => {
+            if (smsRes.data && smsRes.data.split(",") > 2)
+              return sendSuccess(res, {
+                message: "Verification code was sent successfully",
+              });
+            else
+              return sendSuccess(res, {
+                message: "Error when sending verification code",
+                code,
+              });
+          })
+          .catch(() => {
+            return sendError(res, {
+              message: "Error when sending verification code",
+            });
+          });
+      })
+      .catch(() =>
+        sendError(res, {
+          message: "Error when generating verification code, try again latter.",
+        })
+      );
+  } else
+    sendError(res, {
+      message:
+        "A verfication code has already been sent to this device, please request a new code after " +
+        phone_vtoken_exp_at_minutes +
+        " minutes.",
+    });
+};
+
+// post
+exports.ConfirmMobile = async (req, res, next) => {
+  const loggedUser = req.user;
+  const { verification_code } = req.body;
+  await Validation.number("verification_code", 6, 6).run(req);
+
+  await Promise.resolve()
+    .then(() => ValidateRequest(req))
+    .catch(next);
+
+  const hashed_verification_code = sha256(verification_code.toString());
+
+  if (
+    loggedUser.phone_verify_token == hashed_verification_code &&
+    loggedUser.phone_vtoken_exp_at > new Date()
+  ) {
+    var token = await loggedUser.getSignedJwtToken(req, req.jwtToken, {
+      isMobileAuthorized: true,
+      phone_verify_exp_at: new Date(
+        new Date().getTime() + 60000 * phone_verify_exp_at_minutes
+      ),
+    });
+    sendSuccess(res, {
+      message: "Phone was confirmed successfully",
+      token,
+      user: loggedUser.getLoggedUser(),
+    });
+  } else
+    sendError(res, {
+      message: "Verification Code does not match or expired",
+    });
+};
+
+exports.Confirm2FA = async (req, res, next) => {
   const loggedUser = req.user;
   const { auth_code } = req.body;
-
   await Validation.number("auth_code", 6, 6).run(req);
 
   await Promise.resolve()
@@ -393,35 +520,30 @@ exports.Authorize2FA = async (req, res, next) => {
       message: "Two factor authentication is not activated for this account",
     });
 
-  GeneralAccountDao.findUser({ nationalID: loggedUser.nationalID }, true)
-    .then(async (user) => {
-      if (!user)
-        return sendError(res, {
-          message: "No account associated with the provided National ID.",
-        });
+  const verification_result = twofactor.verifyToken(
+    loggedUser.two_factor_secret,
+    auth_code.toString()
+  );
 
-      const verification_result = twofactor.verifyToken(
-        user.two_factor_secret,
-        auth_code.toString()
-      );
-      // match code
-      if (verification_result && verification_result.delta == 0) {
-        // return jwt token
-        user.two_factor_secret = null;
-        var token = await user.getSignedJwtToken(req, true);
-        return sendSuccess(res, {
-          message: "Success 2fa login",
-          token,
-        });
-      } else
-        return sendError(res, {
-          message: "Auth code is incorrect",
-        });
-    })
-    .catch(next);
+  if (verification_result && verification_result.delta == 0) {
+    var token = await loggedUser.getSignedJwtToken(req, req.jwtToken, {
+      is2FAAuthorized: true,
+      twoFA_verify_exp_at: new Date(
+        new Date().getTime() + 60000 * twoFA_verify_exp_at_minutes
+      ),
+    });
+    sendSuccess(res, {
+      message: "Two factor authentication was confirmed successfully",
+      token,
+      user: loggedUser.getLoggedUser(),
+    });
+  } else
+    sendError(res, {
+      message: "Auth Code does not match or expired",
+    });
 };
 
-exports.Register2FA = (req, res, next) => {
+exports.Register2FA = async (req, res, next) => {
   const loggedUser = req.user;
 
   if (loggedUser.isTwoFactorEnabled)
@@ -485,11 +607,15 @@ exports.Activate2FA = async (req, res, next) => {
       isTwoFactorEnabled: true,
     })
       .then(async (upUser) => {
-        var token = await upUser.getSignedJwtToken(req, true);
+        var token = await upUser.getSignedJwtToken(req, req.jwtToken, {
+          is2FAAuthorized: true,
+          twoFA_verify_exp_at: new Date(new Date().getTime() + 60000 * 30),
+        });
         return sendSuccess(res, {
           message:
             "Two factor authentication was successfully activated on this account.",
           token,
+          user: upUser.getLoggedUser(),
         });
       })
       .catch(() =>
@@ -504,11 +630,11 @@ exports.Activate2FA = async (req, res, next) => {
     });
 };
 
-exports.Revoke2FA = (req, res, next) => {
+exports.Revoke2FA = async (req, res, next) => {
   const loggedUser = req.user;
-  const { pwd_confirm_exp } = req.user.user_jwt;
+  const { pwd_verify_exp_at } = req.jwtTokenData;
 
-  if (!pwd_confirm_exp || pwd_confirm_exp < new Date())
+  if (!pwd_verify_exp_at || pwd_verify_exp_at < new Date())
     return sendError(
       res,
       {
@@ -528,11 +654,16 @@ exports.Revoke2FA = (req, res, next) => {
     isTwoFactorEnabled: false,
     two_factor_secret: null,
   })
-    .then(() => {
-      JWTTokenDao.invalidateToken(req.user.user_jwt.token);
+    .then(async (upUser) => {
+      var token = await upUser.getSignedJwtToken(req, req.jwtToken, {
+        is2FAAuthorized: false,
+        twoFA_verify_exp_at: null,
+      });
       sendSuccess(res, {
         message:
           "Two factor authentication was successfully deactivated from this account.",
+        token,
+        user: loggedUser.getLoggedUser(),
       });
     })
     .catch(() =>

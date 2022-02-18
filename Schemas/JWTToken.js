@@ -22,7 +22,6 @@ const TokenSchema = new Schema(
     payload: String,
     last_activity: Number,
     isValid: Boolean,
-    pwd_confirm_exp: { type: Date, expires: 60 * 15 },
   },
 
   { timestamps: true }

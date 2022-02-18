@@ -26,10 +26,7 @@ exports.TokenValidator = async (req, res, next) => {
     if (!UserDao) throw new Error("Invalid user type!");
 
     // fetch user by decoded rtoken user id
-    const user = await UserDao.findUser(
-      { _id: decodedUserData.user_id },
-      true
-    );
+    const user = await UserDao.findUser({ _id: decodedUserData.user_id }, true);
 
     // invalid user
     if (!user) throw new Error("Invalid user!");
@@ -49,6 +46,8 @@ exports.TokenValidator = async (req, res, next) => {
     // user is authenicated, used by other middlewares to verify role etc
     req.user = user;
     req.user.user_jwt = jwtToken;
+    req.jwtToken = token;
+    req.jwtTokenData = decodedUserData;
     req.user.is2FAAuthorized = decodedUserData.is2FAAuthorized;
 
     // save the user's token with user agent
