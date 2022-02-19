@@ -1,11 +1,11 @@
 const { UserEnum } = require("../Models/UserModel");
-const { Authenticate } = require("./Authenticate");
-const { GuestUser } = require("./GuestUser");
 const { TokenValidator } = require("./TokenValidator");
-const { TwoFactorAuthorized } = require("./TwoFactorAuthorized");
-const { AccountApproved } = require("./AccountApproved");
-const { AccountUnlocked } = require("./AccountUnlocked");
-const { PhoneVerified } = require("./PhoneVerified");
+const { GuestUser } = require("./GuestUser");
+const { Authenticate } = require("./Authorization/Authenticate");
+const { PhoneAuthorized } = require("./Authorization/PhoneAuthorized");
+const { TwoFactorAuthorized } = require("./Authorization/TwoFactorAuthorized");
+const { AccountApproved } = require("./Verification/AccountApproved");
+const { AccountUnlocked } = require("./Verification/AccountUnlocked");
 
 exports.AppMiddlewares = (app) => {
   /* VALIDATE TOKEN */
@@ -29,7 +29,7 @@ exports.AppMiddlewares = (app) => {
     TwoFactorAuthorized,
     AccountApproved,
     AccountUnlocked,
-    PhoneVerified
+    PhoneAuthorized
   );
 
   // For Service Accounts
@@ -39,6 +39,6 @@ exports.AppMiddlewares = (app) => {
   //   TwoFactorAuthorized,
   //   AccountApproved,
   //   AccountUnlocked,
-  //   PhoneVerified
+  //   PhoneAuthorized
   // );
 };

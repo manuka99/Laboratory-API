@@ -141,8 +141,7 @@ exports.RecoverPassword = async (req, res, next) => {
                 });
               else
                 return sendSuccess(res, {
-                  message: "Error when sending authorization code",
-                  code,
+                  message: "Error when sending authorization code " + code,
                 });
             })
             .catch(() => {
@@ -268,8 +267,7 @@ exports.UpdateTempPhone = async (req, res, next) => {
             });
           else
             return sendSuccess(res, {
-              message: "Error when sending verification code",
-              code,
+              message: "Error when sending verification code " + code,
             });
         })
         .catch(() => {
@@ -287,6 +285,22 @@ exports.UpdateTempPhone = async (req, res, next) => {
 
 // patch
 exports.VerifyAndUpdatePhone = async (req, res, next) => {
+  const loggedUser = req.user;
+  const { phone_verify_exp_at } = req.jwtTokenData;
+
+  if (
+    loggedUser.isMobileAuthenticationEnabled &&
+    (!phone_verify_exp_at || phone_verify_exp_at < new Date())
+  )
+    return sendError(
+      res,
+      {
+        message: "Phone is not verified, please verify your mobile number",
+        code: ErrorCodeEnum.PHONE_VERIFICATION,
+      },
+      403
+    );
+
   const { verification_code } = req.body;
 
   await Validation.number("verification_code", 6, 6).run(req);
@@ -298,20 +312,28 @@ exports.VerifyAndUpdatePhone = async (req, res, next) => {
   const hashed_verification_code = sha256(verification_code.toString());
 
   if (
-    req.user.tphone_verify_token == hashed_verification_code &&
-    req.user.tphone_vtoken_exp_at > new Date()
+    loggedUser.tphone_verify_token == hashed_verification_code &&
+    loggedUser.tphone_vtoken_exp_at > new Date()
   ) {
     // update phone
-    GeneralAccountDao.update(req.user._id, {
+    GeneralAccountDao.update(loggedUser._id, {
       phone: req.user.tempPhone,
+      isMobileAuthenticationEnabled: true,
       tempPhone: null,
       tphone_verify_token: null,
       tphone_vtoken_exp_at: null,
       phone_verified_at: new Date(),
     })
       .then(async () => {
+        var token = await loggedUser.getSignedJwtToken(req, req.jwtToken, {
+          isMobileAuthorized: true,
+          phone_verify_exp_at: new Date(
+            new Date().getTime() + 60000 * phone_verify_exp_at_minutes
+          ),
+        });
         return sendSuccess(res, {
           message: "Phone number was updated successfully",
+          token,
         });
       })
       .catch(() =>
@@ -449,8 +471,7 @@ exports.ConfirmMobileRequest = async (req, res, next) => {
               });
             else
               return sendSuccess(res, {
-                message: "Error when sending verification code",
-                code,
+                message: "Error when sending verification code " + code,
               });
           })
           .catch(() => {

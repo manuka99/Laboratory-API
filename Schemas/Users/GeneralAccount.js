@@ -40,12 +40,10 @@ const GeneralAccountSchema = new Schema(
     phone: {
       type: String,
       unique: true,
-      required: [true, "Contact number must not be empty."],
     },
     tempPhone: {
       type: String,
       unique: true,
-      expires: 60 * 15,
     },
     email: {
       type: String,
@@ -238,6 +236,7 @@ GeneralAccountSchema.methods.getLoggedUser = function () {
     nationalID: this.nationalID,
     dateOfBirth: this.dateOfBirth,
     phone: this.phone,
+    tempPhone: this.tempPhone,
     email: this.email,
     street: this.street,
     province: this.province,

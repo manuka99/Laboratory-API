@@ -1,5 +1,5 @@
-const { sendError } = require("../Common/util");
-const { ErrorCodeEnum } = require("../Models/ErrorModel");
+const { sendError } = require("../../Common/util");
+const { ErrorCodeEnum } = require("../../Models/ErrorModel");
 
 exports.AccountApproved = async (req, res, next) => {
   if (req.user && req.user.isApproved) return next();

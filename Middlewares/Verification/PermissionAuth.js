@@ -1,4 +1,4 @@
-const { sendError } = require("../Common/util");
+const { sendError } = require("../../Common/util");
 
 exports.RoleAuth = (roles) => (req, res, next) => {
   var hasRole = roles.includes(req.user.role);

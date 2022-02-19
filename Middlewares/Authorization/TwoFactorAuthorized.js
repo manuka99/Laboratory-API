@@ -1,5 +1,5 @@
-const { sendError } = require("../Common/util");
-const { ErrorCodeEnum } = require("../Models/ErrorModel");
+const { sendError } = require("../../Common/util");
+const { ErrorCodeEnum } = require("../../Models/ErrorModel");
 
 exports.TwoFactorAuthorized = async (req, res, next) => {
   if (req.user && (!req.user.isTwoFactorEnabled || req.jwtTokenData.is2FAAuthorized))
