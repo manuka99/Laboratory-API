@@ -76,9 +76,9 @@ const GeneralAccountSchema = new Schema(
     },
     address: {
       type: String,
-      required: [true, "address must not be empty."],
-      minlength: [8, "address must have at least 8 characters."],
-      maxlength: [500, "address must not have more than 60 characters."],
+      required: [true, "Address must not be empty."],
+      minlength: [8, "Address must have at least 8 characters."],
+      maxlength: [500, "Address must not have more than 60 characters."],
     },
     zipCode: {
       type: String,
@@ -235,8 +235,8 @@ GeneralAccountSchema.methods.getLoggedUser = function () {
     gender: this.gender,
     nationalID: this.nationalID,
     dateOfBirth: this.dateOfBirth,
-    phone: this.phone,
-    tempPhone: this.tempPhone,
+    phone: this.phone ? "xxxxxxx" + this.phone.slice(-3) : null,
+    tempPhone: this.tempPhone ? "xxxxxxx" + this.tempPhone.slice(-3) : null,
     email: this.email,
     street: this.street,
     province: this.province,

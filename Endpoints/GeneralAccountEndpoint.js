@@ -255,7 +255,7 @@ exports.UpdateTempPhone = async (req, res, next) => {
     tempPhone: temp_phone,
     tphone_vtoken_exp_at,
   })
-    .then(() => {
+    .then((upUser) => {
       // send sms
       var smsLink = `https://www.textit.biz/sendmsg/?id=${SMS_NUMBER}&pw=${SMS_PASS}s&to=${temp_phone}&text=Code+is+${code}`;
       axios
@@ -264,10 +264,12 @@ exports.UpdateTempPhone = async (req, res, next) => {
           if (smsRes.data && smsRes.data.split(",") > 2)
             return sendSuccess(res, {
               message: "Verification code was sent successfully",
+              tempPhone: temp_phone,
             });
           else
             return sendSuccess(res, {
               message: "Error when sending verification code " + code,
+              user: upUser.getLoggedUser(),
             });
         })
         .catch(() => {
@@ -516,6 +518,9 @@ exports.ConfirmMobile = async (req, res, next) => {
         new Date().getTime() + 60000 * phone_verify_exp_at_minutes
       ),
     });
+    loggedUser.phone_verify_token = null;
+    loggedUser.phone_vtoken_exp_at = null;
+    loggedUser.save();
     sendSuccess(res, {
       message: "Phone was confirmed successfully",
       token,
