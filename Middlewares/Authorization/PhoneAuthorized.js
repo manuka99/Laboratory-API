@@ -7,7 +7,7 @@ exports.PhoneAuthorized = async (req, res, next) => {
     res,
     {
       message:
-        "Phone authorization is required, please verify your mobile number",
+        "Permission denied: You are not authorized to perform this function. Phone authorization is required, please verify your mobile number",
       code: ErrorCodeEnum.PHONE_AUTH,
     },
     403

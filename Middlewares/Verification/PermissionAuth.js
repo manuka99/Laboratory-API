@@ -6,7 +6,8 @@ exports.RoleAuth = (roles) => (req, res, next) => {
     sendError(
       res,
       {
-        message: "You are not authorized or permitted for this content!",
+        message:
+          "Permission denied: You are not authorized to perform this function.",
       },
       403
     );

@@ -7,7 +7,7 @@ exports.PhoneVerified = async (req, res, next) => {
   return sendError(
     res,
     {
-      message: "Phone is not verified, please verify your mobile number",
+      message: "Permission denied: You are not authorized to perform this function. Phone/SMS Verification is required.",
       code: ErrorCodeEnum.PHONE_VERIFICATION,
     },
     403

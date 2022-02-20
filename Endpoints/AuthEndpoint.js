@@ -4,7 +4,6 @@ const JWTTokenDao = require("../Dao/JWTTokenDao");
 //to validate token
 exports.GetRequestUser = async (req, res, next) => {
   const reqUser = req.user;
-  console.log(reqUser)
   var user;
   if (reqUser) {
     user = reqUser.getLoggedUser();
