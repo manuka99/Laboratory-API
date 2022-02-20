@@ -366,6 +366,12 @@ exports.UpdateAccountPassword = async (req, res, next) => {
 
   const { raw_password } = req.body;
 
+  await Validation.text("raw_password", 8, 40).run(req);
+
+  await Promise.resolve()
+    .then(() => ValidateRequest(req))
+    .catch(next);
+
   const encrypted_pwd = bcrypt.hashSync(raw_password, 12);
 
   // update password
@@ -403,20 +409,26 @@ exports.UpdateTxPassword = async (req, res, next) => {
 
   const { raw_tx_password } = req.body;
 
-  const encrypted_pwd = bcrypt.hashSync(raw_tx_password, 12);
+  await Validation.text("raw_tx_password", 8, 40).run(req);
 
-  // update password
-  GeneralAccountDao.update(_id, { transactionPassword: encrypted_pwd })
-    .then(() =>
-      sendSuccess(res, {
-        message: "Password was updated successfully",
-      })
-    )
-    .catch(() =>
-      sendError(res, {
-        message: "Error: Password was not updated",
-      })
-    );
+  await Promise.resolve()
+    .then(() => ValidateRequest(req))
+    .then(() => {
+      const encrypted_pwd = bcrypt.hashSync(raw_tx_password, 12);
+      // update password
+      GeneralAccountDao.update(_id, { transactionPassword: encrypted_pwd })
+        .then(() =>
+          sendSuccess(res, {
+            message: "Password was updated successfully",
+          })
+        )
+        .catch(() =>
+          sendError(res, {
+            message: "Error: Password was not updated",
+          })
+        );
+    })
+    .catch(next);
 };
 
 // post
