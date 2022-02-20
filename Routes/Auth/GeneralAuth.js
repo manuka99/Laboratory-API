@@ -1,4 +1,7 @@
 const GeneralAccountEndpoint = require("../../Endpoints/GeneralAccountEndpoint");
+const {
+  ActPwdVerified,
+} = require("../../Middlewares/Verification/PasswordVerified");
 
 exports.GeneralAccountAuthRoutes = (app) => {
   /* Guest Routes */
@@ -13,6 +16,7 @@ exports.GeneralAccountAuthRoutes = (app) => {
   );
   app.patch(
     "/api/auth/general/update-temp-phone",
+    ActPwdVerified,
     GeneralAccountEndpoint.UpdateTempPhone
   );
   app.patch(
@@ -33,20 +37,27 @@ exports.GeneralAccountAuthRoutes = (app) => {
     "/api/auth/general/verify-phone",
     GeneralAccountEndpoint.ConfirmMobile
   );
+  app.post("/api/auth/general/verify-2fa", GeneralAccountEndpoint.Confirm2FA);
   app.post(
-    "/api/auth/general/verify-2fa",
-    GeneralAccountEndpoint.Confirm2FA
+    "/api/general/register2fa",
+    ActPwdVerified,
+    GeneralAccountEndpoint.Register2FA
   );
-  app.post("/api/general/register2fa", GeneralAccountEndpoint.Register2FA);
-  app.post("/api/general/activate2fa", GeneralAccountEndpoint.Activate2FA);
+  app.post(
+    "/api/general/activate2fa",
+    ActPwdVerified,
+    GeneralAccountEndpoint.Activate2FA
+  );
 
   // General
   app.patch(
     "/api/general/update-password",
+    ActPwdVerified,
     GeneralAccountEndpoint.UpdateAccountPassword
   );
   app.patch(
     "/api/general/update-tx-password",
+    ActPwdVerified,
     GeneralAccountEndpoint.UpdateTxPassword
   );
   app.post("/api/general/revoke2fa", GeneralAccountEndpoint.Revoke2FA);

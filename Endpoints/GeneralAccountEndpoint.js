@@ -92,7 +92,7 @@ exports.Login = async (req, res, next) => {
       // return jwt token
       user.password = null;
       var token = await user.getSignedJwtToken(req, false, {
-        pwd_verify_exp_at: new Date(new Date().getTime() + 60000 * 30),
+        // pwd_verify_exp_at: new Date(new Date().getTime() + 60000 * 30),
       });
       return sendSuccess(res, {
         message: "Success user login",
