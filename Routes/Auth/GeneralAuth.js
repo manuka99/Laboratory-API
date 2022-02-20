@@ -37,8 +37,8 @@ exports.GeneralAccountAuthRoutes = (app) => {
     "/api/auth/general/verify-2fa",
     GeneralAccountEndpoint.Confirm2FA
   );
-  app.post("/api/auth/general/register2fa", GeneralAccountEndpoint.Register2FA);
-  app.post("/api/auth/general/activate2fa", GeneralAccountEndpoint.Activate2FA);
+  app.post("/api/general/register2fa", GeneralAccountEndpoint.Register2FA);
+  app.post("/api/general/activate2fa", GeneralAccountEndpoint.Activate2FA);
 
   // General
   app.patch(

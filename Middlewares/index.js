@@ -26,10 +26,10 @@ exports.AppMiddlewares = (app) => {
   app.use(
     "/api/general/",
     Authenticate(UserEnum.GENERAL),
-    TwoFactorAuthorized,
-    AccountApproved,
     AccountUnlocked,
-    PhoneAuthorized
+    AccountApproved,
+    PhoneAuthorized,
+    TwoFactorAuthorized
   );
 
   // For Service Accounts
