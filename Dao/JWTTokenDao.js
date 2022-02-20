@@ -23,6 +23,14 @@ exports.ConfirmPassword = async (_id, exp) => {
   return jwtToken;
 };
 
+exports.invalidateTokenByIdAndUser = async (_id, user_id) => {
+  const jwtToken = await JWTToken.updateOne(
+    { _id, user_id },
+    { $set: { isValid: false } }
+  );
+  return jwtToken;
+};
+
 exports.invalidateTokenById = async (_id) => {
   const jwtToken = await JWTToken.updateOne(
     { _id },
@@ -36,6 +44,11 @@ exports.invalidateTokensOfUser = async (user_id) => {
     { user_id: user_id },
     { $set: { isValid: false } }
   );
+  return jwtTokens;
+};
+
+exports.deleteAllInvalidTokensOfUser = async (user_id) => {
+  const jwtTokens = await JWTToken.deleteMany({ user_id, isValid: false });
   return jwtTokens;
 };
 
