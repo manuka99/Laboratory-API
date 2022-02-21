@@ -2,8 +2,10 @@ require("dotenv").config();
 
 var PORT = process.env.LOCAL_PORT;
 var DB = process.env.LOCAL_DB;
-var SMS_NUMBER = process.env.LOCAL_DB;
-var SMS_PASS = process.env.LOCAL_DB;
+var SMS_NUMBER = process.env.SMS_NUMBER;
+var SMS_PASS = process.env.SMS_PASS;
+var MAIL_USER = process.env.MAIL_USER;
+var MAIL_PASSWORD = process.env.MAIL_PASSWORD;
 
 if (process.env.NODE_ENV && process.env.NODE_ENV.trim() == "production") {
   PORT = process.env.PORT;
@@ -16,4 +18,6 @@ module.exports = {
   PORT,
   SMS_NUMBER,
   SMS_PASS,
+  MAIL_USER,
+  MAIL_PASSWORD,
 };

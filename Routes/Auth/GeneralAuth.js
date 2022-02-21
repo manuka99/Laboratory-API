@@ -62,6 +62,11 @@ exports.GeneralAccountAuthRoutes = (app) => {
   );
   app.post("/api/general/revoke2fa", GeneralAccountEndpoint.Revoke2FA);
 
+  // Email update and send code
+  app.post("/api/general/verify-email-request", GeneralAccountEndpoint.VerifyEmailRequest);
+  
+  app.get("/api/public/general/verify-email", GeneralAccountEndpoint.VerifyEmailAndUpdate);
+
   // Admin
   app.post(
     "/api/admin/general/registration",

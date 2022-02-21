@@ -9,6 +9,8 @@ const axios = require("axios");
 const { Validation } = require("../Validation");
 const { ValidateRequest } = require("../Middlewares/ValidateRequest");
 const bcrypt = require("bcrypt");
+const { sendSms } = require("../Util/SmsService");
+const { sendMail } = require("../Util/MailService");
 
 const pwd_rtoken_exp_at_minutes = 15;
 const phone_vtoken_exp_at_minutes = 15;
@@ -131,24 +133,17 @@ exports.RecoverPassword = async (req, res, next) => {
       })
         .then(() => {
           // send sms
-          var smsLink = `https://www.textit.biz/sendmsg/?id=${SMS_NUMBER}&pw=${SMS_PASS}s&to=${user.phone}&text=Code+is+${code}`;
-          axios
-            .get(smsLink)
-            .then((smsRes) => {
-              if (smsRes.data && smsRes.data.split(",") > 2)
-                return sendSuccess(res, {
-                  message: "Authorization code was sent successfully",
-                });
-              else
-                return sendSuccess(res, {
-                  message: "Error when sending authorization code " + code,
-                });
-            })
-            .catch(() => {
-              return sendError(res, {
-                message: "Error when sending authorization code",
-              });
-            });
+          sendSms({ to: user.phone, body: `text=Code+is+${code}` })
+            .then(() =>
+              sendSuccess(res, {
+                message: "Authorization code was sent successfully",
+              })
+            )
+            .catch(() =>
+              sendError(res, {
+                message: "Error when sending authorization code " + code,
+              })
+            );
         })
         .catch(() =>
           sendError(res, {
@@ -257,26 +252,19 @@ exports.UpdateTempPhone = async (req, res, next) => {
   })
     .then((upUser) => {
       // send sms
-      var smsLink = `https://www.textit.biz/sendmsg/?id=${SMS_NUMBER}&pw=${SMS_PASS}s&to=${temp_phone}&text=Code+is+${code}`;
-      axios
-        .get(smsLink)
-        .then((smsRes) => {
-          if (smsRes.data && smsRes.data.split(",") > 2)
-            return sendSuccess(res, {
-              message: "Verification code was sent successfully",
-              tempPhone: temp_phone,
-            });
-          else
-            return sendSuccess(res, {
-              message: "Error when sending verification code " + code,
-              user: upUser.getLoggedUser(),
-            });
-        })
-        .catch(() => {
-          return sendError(res, {
-            message: "Error when sending verification code",
-          });
-        });
+      sendSms({ to: temp_phone, body: `text=Code+is+${code}` })
+        .then(() =>
+          sendSuccess(res, {
+            message: "Verification code was sent successfully",
+            tempPhone: temp_phone,
+          })
+        )
+        .catch(() =>
+          sendError(res, {
+            message: "Error when sending verification code " + code,
+            user: upUser.getLoggedUser(),
+          })
+        );
     })
     .catch(() =>
       sendError(res, {
@@ -475,24 +463,17 @@ exports.ConfirmMobileRequest = async (req, res, next) => {
     })
       .then(() => {
         // send sms
-        var smsLink = `https://www.textit.biz/sendmsg/?id=${SMS_NUMBER}&pw=${SMS_PASS}s&to=${loggedUser.phone}&text=Code+is+${code}`;
-        axios
-          .get(smsLink)
-          .then((smsRes) => {
-            if (smsRes.data && smsRes.data.split(",") > 2)
-              return sendSuccess(res, {
-                message: "Verification code was sent successfully",
-              });
-            else
-              return sendSuccess(res, {
-                message: "Error when sending verification code " + code,
-              });
-          })
-          .catch(() => {
-            return sendError(res, {
-              message: "Error when sending verification code",
-            });
-          });
+        sendSms({ to: loggedUser.phone, body: `text=Code+is+${code}` })
+          .then(() =>
+            sendSuccess(res, {
+              message: "Verification code was sent successfully",
+            })
+          )
+          .catch(() =>
+            sendError(res, {
+              message: "Error when sending verification code " + code,
+            })
+          );
       })
       .catch(() =>
         sendError(res, {
@@ -507,7 +488,6 @@ exports.ConfirmMobileRequest = async (req, res, next) => {
         " minutes.",
     });
 };
-
 // post
 exports.ConfirmMobile = async (req, res, next) => {
   const loggedUser = req.user;
@@ -708,6 +688,82 @@ exports.Revoke2FA = async (req, res, next) => {
       sendError(res, {
         message:
           "Failed to deactivate two factor authentication on this account. Sign out and try again.",
+      })
+    );
+};
+
+// post
+exports.VerifyEmailRequest = async (req, res, next) => {
+  const loggedUser = req.user;
+  const { temp_email } = req.body;
+
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const email_verify_token = sha256(temp_email + code);
+  const email_vtoken_exp_at = new Date(
+    new Date().getTime() + 60 * 1000 * email_vtoken_exp_at_minutes
+  );
+
+  GeneralAccountDao.update(loggedUser._id, {
+    email_verify_token,
+    email_vtoken_exp_at,
+  })
+    .then(() => {
+      // send email
+      var verificationLink = `${req.protocol}://${req.headers.host}/api/public/general/verify-email?nic=${loggedUser.nationalID}&email=${temp_email}&code=${code}`;
+      sendMail({
+        to: temp_email,
+        subject: "MetaSpeck: Verify Email",
+        text: verificationLink,
+      })
+        .then(() =>
+          sendSuccess(res, {
+            message: "Verification email was sent successfully",
+          })
+        )
+        .catch(() =>
+          sendError(res, {
+            message: "Error when sending verification email",
+          })
+        );
+    })
+    .catch(() =>
+      sendError(res, {
+        message: "Error when generating verification code, try again latter.",
+      })
+    );
+};
+
+// get
+exports.VerifyEmailAndUpdate = async (req, res, next) => {
+  const { nic, email, code } = req.query;
+  const email_verify_token = sha256(email + code);
+  GeneralAccountDao.findUser({ nationalID: nic, email_verify_token }, true)
+    .then((user) => {
+      if (user && user.email_vtoken_exp_at > new Date()) {
+        GeneralAccountDao.update(user._id, {
+          email_verify_token: null,
+          email_vtoken_exp_at: null,
+          email: email,
+          email_verified_at: new Date(),
+        })
+          .then(() =>
+            sendSuccess(res, {
+              message: "Email was verified successfully",
+            })
+          )
+          .catch(() =>
+            sendError(res, {
+              message: "Error: Email was not verified.",
+            })
+          );
+      } else
+        sendError(res, {
+          message: "Error: Invalid verification data or expired",
+        });
+    })
+    .catch(() =>
+      sendError(res, {
+        message: "Error when generating verification code, try again latter.",
       })
     );
 };
