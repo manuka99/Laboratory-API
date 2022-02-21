@@ -1,4 +1,4 @@
-const { sendSuccess } = require("../Common/util");
+const { sendSuccess, sendError } = require("../Common/util");
 const JWTTokenDao = require("../Dao/JWTTokenDao");
 const geoip = require("geoip-lite");
 
@@ -25,14 +25,28 @@ exports.getUserSession = async (req, res, next) => {
 };
 
 exports.revokeUserSession = (req, res, next) => {
-  JWTTokenDao.invalidateTokenByIdAndUser(req.user._id, req.params.id)
-    .then((jwtToken) => sendSuccess(res, jwtToken))
-    .catch(next);
+  JWTTokenDao.invalidateTokenByIdAndUser(req.params.id, req.user._id)
+    .then(() =>
+      sendSuccess(res, {
+        message: "Device was revoked successfully.",
+      })
+    )
+    .catch(() =>
+      sendError(res, {
+        message: "Device was not revoked, please refresh and try again.",
+      })
+    );
 };
 
 exports.revokeAllUserSessions = (req, res, next) => {
   JWTTokenDao.invalidateTokensOfUser(req.user._id)
-    .then((jwtTokens) => sendSuccess(res, jwtTokens))
+    .then(async () => {
+      var token = await req.user.getSignedJwtToken(req, req.jwtToken);
+      sendSuccess(res, {
+        message: "All devices were revoked successfully.",
+        token,
+      });
+    })
     .catch(next);
 };
 
@@ -50,6 +64,20 @@ exports.deleteSession = (req, res, next) => {
 
 exports.deleteAllInvalidUserSession = (req, res, next) => {
   JWTTokenDao.deleteAllInvalidTokensOfUser(req.user._id)
-    .then((jwtToken) => sendSuccess(res, jwtToken))
+    .then(() =>
+      sendSuccess(res, {
+        message: "All revoked devices were removed successfully.",
+      })
+    )
+    .catch(next);
+};
+
+exports.deleteOneInvalidTokenOfUser = (req, res, next) => {
+  JWTTokenDao.deleteOneInvalidTokenOfUser(req.params.id, req.user._id)
+    .then(() =>
+      sendSuccess(res, {
+        message: "Revoked device was removed successfully.",
+      })
+    )
     .catch(next);
 };

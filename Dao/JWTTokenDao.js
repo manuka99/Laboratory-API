@@ -52,6 +52,11 @@ exports.deleteAllInvalidTokensOfUser = async (user_id) => {
   return jwtTokens;
 };
 
+exports.deleteOneInvalidTokenOfUser = async (_id, user_id) => {
+  const jwtToken = await JWTToken.deleteOne({ _id, user_id, isValid: false });
+  return jwtToken;
+};
+
 exports.saveTokenWithUseragent = async (token, user, useragent, ip) => {
   var jwtToken = await JWTToken.findOne({ token });
 
@@ -79,7 +84,7 @@ exports.saveTokenWithUseragent = async (token, user, useragent, ip) => {
 };
 
 exports.findAllByUserID = async (user_id) => {
-  const tokens = await JWTToken.find({ user_id }).sort({ updatedAt: "desc" });
+  const tokens = await JWTToken.find({ user_id }).sort({ isValid: 'desc', updatedAt: "desc" });
   return tokens;
 };
 

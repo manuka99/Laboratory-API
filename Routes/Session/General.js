@@ -15,4 +15,8 @@ exports.GeneralSessionRoutes = (app) => {
     "/api/general/sessions",
     SessionEndpoint.deleteAllInvalidUserSession
   );
+  app.delete(
+    "/api/general/sessions/:id",
+    SessionEndpoint.deleteOneInvalidTokenOfUser
+  );
 };
