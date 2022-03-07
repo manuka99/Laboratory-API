@@ -6,6 +6,7 @@ const { PhoneAuthorized } = require("./Authorization/PhoneAuthorized");
 const { TwoFactorAuthorized } = require("./Authorization/TwoFactorAuthorized");
 const { AccountApproved } = require("./Verification/AccountApproved");
 const { AccountUnlocked } = require("./Verification/AccountUnlocked");
+const RoutesEnum = require("../Models/RouteModel");
 
 exports.AppMiddlewares = (app) => {
   /* VALIDATE TOKEN */
@@ -13,18 +14,24 @@ exports.AppMiddlewares = (app) => {
 
   /* Guest routes */
   // not logged in
-  app.use("/api/guest/", GuestUser);
+  app.use(`${RoutesEnum.API}${RoutesEnum.GUEST}/`, GuestUser);
 
   /* AUTHENTICATION (without two factor, approved, unlocked) */
-  app.use("/api/auth/", Authenticate());
-  app.use("/api/auth/general/", Authenticate(UserEnum.GENERAL));
-  app.use("/api/auth/admin/", Authenticate(UserEnum.SERVICE));
+  app.use(`${RoutesEnum.API}${RoutesEnum.AUTH}/`, Authenticate());
+  app.use(
+    `${RoutesEnum.API}${RoutesEnum.AUTH_GENERAL}/`,
+    Authenticate(UserEnum.GENERAL)
+  );
+  app.use(
+    `${RoutesEnum.API}${RoutesEnum.AUTH_ADMIN}/`,
+    Authenticate(UserEnum.SERVICE)
+  );
 
   /* AUTHORIZATION */
 
   // For General Accounts
   app.use(
-    "/api/general/",
+    `${RoutesEnum.API}${RoutesEnum.GENERAL}/`,
     Authenticate(UserEnum.GENERAL),
     AccountUnlocked,
     AccountApproved,
@@ -34,7 +41,7 @@ exports.AppMiddlewares = (app) => {
 
   // For Service Accounts
   // app.use(
-  //   "/api/admin/",
+  //   `${RoutesEnum.API}${RoutesEnum.ADMIN}/`,
   //   Authenticate(UserEnum.SERVICE),
   //   TwoFactorAuthorized,
   //   AccountApproved,

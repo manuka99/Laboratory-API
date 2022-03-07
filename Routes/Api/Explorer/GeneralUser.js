@@ -1,4 +1,4 @@
-const GeneralAccountExpEP = require("../../Endpoints/GeneralAccountExpEP");
+const GeneralAccountExpEP = require("../../../Endpoints/GeneralAccountExpEP");
 
 exports.GeneralAccountExplorerRoutes = (app) => {
   /* Public Routes */

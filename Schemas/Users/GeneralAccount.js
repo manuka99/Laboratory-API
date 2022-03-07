@@ -4,6 +4,8 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const JWTTokenDao = require("../../Dao/JWTTokenDao");
 const { AUTH_SECRET } = require("../../Config");
+const sha256 = require("js-sha256");
+const CryptoJS = require("crypto-js");
 
 const GeneralAccountSchema = new Schema(
   {
@@ -89,12 +91,9 @@ const GeneralAccountSchema = new Schema(
       minlength: [8, "Password must have at least 8 characters."],
       select: false, // password will not be retrived unless specified
     },
-    transactionPassword: {
-      type: String,
-      required: [true, "Password must not be empty."],
-      minlength: [8, "Password must have at least 8 characters."],
-      select: false, // password will not be retrived unless specified
-    },
+    transactionSignatureID: String,
+    transactionSignatureKey: String,
+    transactionPasswordHash: String,
     imagePaths: {
       type: Array,
       required: true,
@@ -157,8 +156,25 @@ const GeneralAccountSchema = new Schema(
   { timestamps: true }
 );
 
-GeneralAccountSchema.methods.matchPasswords = function (password) {
+GeneralAccountSchema.methods.matchAccountPassword = function (password) {
   return bcrypt.compareSync(password, this.password);
+};
+
+GeneralAccountSchema.methods.matchTxPassword = function (tx_password) {
+  let hash_tx_password = this.transactionSignatureKey;
+  return hash_tx_password == this.transactionPasswordHash;
+};
+
+GeneralAccountSchema.methods.encryptTxSignatureKey = function (tx_password) {
+  return CryptoJS.AES.encrypt(
+    this.transactionPasswordHash,
+    tx_password
+  ).toString();
+};
+
+GeneralAccountSchema.methods.decryptTxSignatureKey = function (tx_password) {
+  const bytes = CryptoJS.AES.decrypt(this.transactionPasswordHash, tx_password);
+  return bytes.toString(CryptoJS.enc.Utf8);
 };
 
 GeneralAccountSchema.methods.matchPasswordRecoveryTokens = function (token) {

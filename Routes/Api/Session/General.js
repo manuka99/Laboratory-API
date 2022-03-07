@@ -1,4 +1,4 @@
-const SessionEndpoint = require("../../Endpoints/SessionEndpoint");
+const SessionEndpoint = require("../../../Endpoints/SessionEndpoint");
 
 exports.GeneralSessionRoutes = (app) => {
   app.get("/api/general/sessions", SessionEndpoint.getUserSessions);

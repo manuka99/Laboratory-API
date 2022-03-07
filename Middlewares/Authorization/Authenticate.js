@@ -17,6 +17,7 @@ exports.Authenticate = (userType) => async (req, res, next) => {
   const message = req.user
     ? "Permission denied: You are not authorized to perform this function"
     : "Please sign in with your National ID to access the requested service";
+
   return sendError(
     res,
     {

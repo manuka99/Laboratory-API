@@ -85,7 +85,7 @@ exports.Login = async (req, res, next) => {
         });
 
       // match password
-      const isMatch = user.matchPasswords(raw_password);
+      const isMatch = user.matchAccountPassword(raw_password);
       if (!isMatch)
         return sendError(res, {
           message: "Password is incorrect",
@@ -424,7 +424,7 @@ exports.ConfirmPassword = async (req, res, next) => {
   const loggedUser = req.user;
   const { raw_password } = req.body;
 
-  const isMatch = loggedUser.matchPasswords(raw_password);
+  const isMatch = loggedUser.matchAccountPassword(raw_password);
   if (!isMatch)
     return sendError(res, {
       message: "Password is incorrect",
@@ -488,6 +488,7 @@ exports.ConfirmMobileRequest = async (req, res, next) => {
         " minutes.",
     });
 };
+
 // post
 exports.ConfirmMobile = async (req, res, next) => {
   const loggedUser = req.user;

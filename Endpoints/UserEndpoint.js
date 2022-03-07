@@ -92,7 +92,7 @@ exports.Login = async (req, res, next) => {
         });
 
       // match password
-      const isMatch = user.matchPasswords(password);
+      const isMatch = user.matchAccountPassword(password);
       if (!isMatch)
         return sendError(res, {
           message: "Password is incorrect",
