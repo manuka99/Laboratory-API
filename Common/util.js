@@ -1,4 +1,3 @@
-const Consola = require("consola");
 
 const sendSuccess = (res, data) => {
   res.status(200).json({ success: true, data });
@@ -26,7 +25,7 @@ const FormatValidationError = (err) => {
       return { message };
     }
   } catch (error) {
-    Consola.error("FormatValidationError: ", err);
+    console.error("FormatValidationError: ", err);
     return err;
   }
 };

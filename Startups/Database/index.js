@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const { MongoMemoryServer } = require("mongodb-memory-server");
+// const { MongoMemoryServer } = require("mongodb-memory-server");
 const { DB } = require("../../Config");
 var mongoServer;
 
@@ -12,9 +12,9 @@ const DB_Options = {
 
 async function connect() {
   if (process.env.NODE_ENV && process.env.NODE_ENV.trim() == "test") {
-    mongoServer = new MongoMemoryServer();
-    const mongoUri = await mongoServer.getUri();
-    await mongoose.connect(mongoUri, DB_Options);
+    // mongoServer = new MongoMemoryServer();
+    // const mongoUri = await mongoServer.getUri();
+    // await mongoose.connect(mongoUri, DB_Options);
   } else await mongoose.connect(DB, DB_Options);
 }
 

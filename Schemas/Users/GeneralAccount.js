@@ -91,9 +91,18 @@ const GeneralAccountSchema = new Schema(
       minlength: [8, "Password must have at least 8 characters."],
       select: false, // password will not be retrived unless specified
     },
-    transactionSignatureID: String,
-    transactionSignatureKey: String,
-    transactionPasswordHash: String,
+    transactionSignatureID: {
+      type: String,
+      select: false,
+    },
+    transactionSignatureKey: {
+      type: String,
+      select: false,
+    },
+    transactionPassword: {
+      type: String,
+      select: false,
+    },
     imagePaths: {
       type: Array,
       required: true,
@@ -152,7 +161,6 @@ const GeneralAccountSchema = new Schema(
     email_verify_token: { type: String, select: false },
     email_vtoken_exp_at: { type: Date, select: false },
   },
-
   { timestamps: true }
 );
 
@@ -161,19 +169,18 @@ GeneralAccountSchema.methods.matchAccountPassword = function (password) {
 };
 
 GeneralAccountSchema.methods.matchTxPassword = function (tx_password) {
-  let hash_tx_password = this.transactionSignatureKey;
-  return hash_tx_password == this.transactionPasswordHash;
+  return bcrypt.compareSync(tx_password, this.transactionPassword);
 };
 
-GeneralAccountSchema.methods.encryptTxSignatureKey = function (tx_password) {
-  return CryptoJS.AES.encrypt(
-    this.transactionPasswordHash,
-    tx_password
-  ).toString();
+GeneralAccountSchema.methods.encryptTxSignatureKey = function (
+  transactionSignatureKey,
+  tx_password
+) {
+  return CryptoJS.AES.encrypt(transactionSignatureKey, tx_password).toString();
 };
 
 GeneralAccountSchema.methods.decryptTxSignatureKey = function (tx_password) {
-  const bytes = CryptoJS.AES.decrypt(this.transactionPasswordHash, tx_password);
+  const bytes = CryptoJS.AES.decrypt(this.transactionSignatureKey, tx_password);
   return bytes.toString(CryptoJS.enc.Utf8);
 };
 
@@ -221,7 +228,7 @@ GeneralAccountSchema.methods.getSignedJwtToken = async function (
 
     const newToken = jwt.sign(
       {
-        exp: Math.floor(Date.now() / 1000) + 60 * 60, //1hour
+        exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24, //1hour
         data: newTokenData,
       },
       AUTH_SECRET

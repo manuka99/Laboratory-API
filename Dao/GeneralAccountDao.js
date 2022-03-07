@@ -1,7 +1,7 @@
 const GeneralAccount = require("../Schemas/Users/GeneralAccount");
 
 const allSecureEntries =
-  "+password +transactionPassword +two_factor_secret +pwd_recovery_token +pwd_rtoken_exp_at +phone_verify_token +phone_vtoken_exp_at +tphone_verify_token +tphone_vtoken_exp_at +email_verify_token +email_vtoken_exp_at";
+  "+password +transactionPassword +two_factor_secret +pwd_recovery_token +pwd_rtoken_exp_at +phone_verify_token +phone_vtoken_exp_at +tphone_verify_token +tphone_vtoken_exp_at +email_verify_token +email_vtoken_exp_at +transactionSignatureID +transactionSignatureKey +transactionPasswordHash";
 
 exports.findUsers = async (query, getALL = false) => {
   var users;

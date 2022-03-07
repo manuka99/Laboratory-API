@@ -3,7 +3,6 @@ const GeneralAccountDao = require("../Dao/GeneralAccountDao");
 const JWTTokenDao = require("../Dao/JWTTokenDao");
 const { AUTH_SECRET } = require("../Config/index");
 var getIP = require("ipware")().get_ip;
-const consola = require("consola");
 const { UserEnum } = require("../Models/UserModel");
 
 // decode jwt token (if present) then if the jwt token is valid request will be authenticated
@@ -58,7 +57,7 @@ exports.TokenValidator = async (req, res, next) => {
       getIP(req).clientIp
     );
   } catch (error) {
-    consola.error(`TokenValidator Middleware: ${error.message}`);
+    console.error(`TokenValidator Middleware: ${error.message}`);
   } finally {
     next();
   }

@@ -2,19 +2,34 @@ const GeneralAccountEndpoint = require("../../../../Endpoints/GeneralAccountEndp
 const {
   ActPwdVerified,
 } = require("../../../../Middlewares/Verification/PasswordVerified");
+const RoutesEnum = require("../../../../Models/RouteModel");
 
 exports.GeneralTransactionAuthRoutes = (router) => {
-  /* Guest Routes */
-
   /* Authorized Routes */
 
   // General
+  router.get(
+    `${RoutesEnum.GENERAL}/tx-security`,
+    ActPwdVerified,
+    GeneralAccountEndpoint.GetTxSecurityInfo
+  );
 
   router.patch(
-    "/api/general/update-tx-password",
+    `${RoutesEnum.GENERAL}/tx-password`,
     ActPwdVerified,
     GeneralAccountEndpoint.UpdateTxPassword
   );
 
+  router.patch(
+    `${RoutesEnum.GENERAL}/tx-signature`,
+    ActPwdVerified,
+    GeneralAccountEndpoint.UpdateTxSignature
+  );
+
+  router.delete(
+    `${RoutesEnum.GENERAL}/reset-tx-signature`,
+    ActPwdVerified,
+    GeneralAccountEndpoint.ResetTransactionSignature
+  );
   // Admin
 };

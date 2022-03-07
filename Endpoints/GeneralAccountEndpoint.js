@@ -6,6 +6,7 @@ const { ErrorCodeEnum } = require("../Models/ErrorModel");
 const twofactor = require("node-2fa");
 var sha256 = require("js-sha256");
 const axios = require("axios");
+const { Keypair } = require("stellar-sdk");
 const { Validation } = require("../Validation");
 const { ValidateRequest } = require("../Middlewares/ValidateRequest");
 const bcrypt = require("bcrypt");
@@ -38,12 +39,10 @@ exports.Registration = async (req, res, next) => {
     zipCode,
     address,
     raw_password,
-    raw_transactionPassword,
     imagePaths,
   } = req.body;
 
   const encrypted_pwd = bcrypt.hashSync(raw_password, 12);
-  const encrypted_tx_pwd = bcrypt.hashSync(raw_transactionPassword, 12);
 
   GeneralAccountDao.create({
     firstName,
@@ -62,7 +61,6 @@ exports.Registration = async (req, res, next) => {
     zipCode,
     address,
     password: encrypted_pwd,
-    transactionPassword: encrypted_tx_pwd,
     imagePaths,
   })
     .then(() =>
@@ -378,45 +376,6 @@ exports.UpdateAccountPassword = async (req, res, next) => {
         err,
       })
     );
-};
-
-// patch
-exports.UpdateTxPassword = async (req, res, next) => {
-  const { _id } = req.user;
-  const { pwd_verify_exp_at } = req.jwtTokenData;
-
-  if (!pwd_verify_exp_at || pwd_verify_exp_at < new Date())
-    return sendError(
-      res,
-      {
-        message: "Confirm the account password.",
-        code: ErrorCodeEnum.CONFIRM_ACT_PWD,
-      },
-      403
-    );
-
-  const { raw_tx_password } = req.body;
-
-  await Validation.text("raw_tx_password", 8, 40).run(req);
-
-  await Promise.resolve()
-    .then(() => ValidateRequest(req))
-    .then(() => {
-      const encrypted_pwd = bcrypt.hashSync(raw_tx_password, 12);
-      // update password
-      GeneralAccountDao.update(_id, { transactionPassword: encrypted_pwd })
-        .then(() =>
-          sendSuccess(res, {
-            message: "Password was updated successfully",
-          })
-        )
-        .catch(() =>
-          sendError(res, {
-            message: "Error: Password was not updated",
-          })
-        );
-    })
-    .catch(next);
 };
 
 // post
@@ -765,6 +724,199 @@ exports.VerifyEmailAndUpdate = async (req, res, next) => {
     .catch(() =>
       sendError(res, {
         message: "Error when generating verification code, try again latter.",
+      })
+    );
+};
+
+// get
+exports.GetTxSecurityInfo = async (req, res, next) => {
+  const { transactionSignatureID, transactionPassword } = req.user;
+  const transactionPasswordHash =
+    transactionPassword && transactionPassword.length > 0
+      ? sha256(transactionPassword)
+      : null;
+
+  return sendSuccess(res, {
+    message: "Retrieved: Transaction security information.",
+    transactionSignatureID,
+    transactionPasswordHash,
+  });
+};
+
+// patch
+exports.UpdateTxPassword = async (req, res, next) => {
+  const { transactionSignatureID } = req.user;
+  const { raw_old_tx_password, raw_tx_signature_key, raw_tx_password } =
+    req.body;
+
+  await Validation.text("raw_tx_password", 8, 40).run(req);
+
+  if (transactionSignatureID) {
+    if (raw_old_tx_password) {
+      let isMatch = req.user.matchTxPassword(raw_old_tx_password);
+      if (isMatch) {
+        let tx_signature_key =
+          req.user.decryptTxSignatureKey(raw_old_tx_password);
+        if (tx_signature_key)
+          return this.UpdateTxPasswordFn(
+            req,
+            res,
+            raw_tx_password,
+            tx_signature_key
+          );
+        else
+          return sendError(res, {
+            message:
+              "Error: Transaction password is invalid, please enter your transaction signature secret",
+          });
+      } else
+        return sendError(res, {
+          message: "Error: Incorrect transaction password",
+        });
+    } else if (raw_tx_signature_key) {
+      let signatureKeypair = Keypair.fromSecret(raw_tx_signature_key);
+      if (
+        signatureKeypair &&
+        signatureKeypair.publicKey() == loggedUser.transactionSignatureID
+      )
+        return this.UpdateTxPasswordFn(
+          req,
+          res,
+          raw_tx_password,
+          raw_tx_signature_key
+        );
+      else
+        return sendError(res, {
+          message: "Error: Transaction signature key is invalid.",
+        });
+    } else
+      return sendError(res, {
+        message:
+          "Error: Current transaction password or signature key is required to update transaction password",
+      });
+  } else return this.UpdateTxPasswordFn(req, res, raw_tx_password, null);
+};
+
+const UpdateTxPasswordFn = async (
+  req,
+  res,
+  raw_tx_password,
+  tx_signature_key
+) => {
+  const loggedUser = req.user;
+  const transactionPassword = bcrypt.hashSync(raw_tx_password, 12);
+  const transactionSignatureKey = tx_signature_key
+    ? loggedUser.encryptTxSignatureKey(tx_signature_key, raw_tx_password)
+    : undefined;
+
+  // update password
+  GeneralAccountDao.update(loggedUser._id, {
+    transactionPassword,
+    transactionSignatureKey,
+  })
+    .then(() =>
+      sendSuccess(res, {
+        message: "Transaction password was updated successfully",
+      })
+    )
+    .catch(() =>
+      sendError(res, {
+        message: "Error: Transaction password was not updated",
+      })
+    );
+};
+
+// patch
+exports.UpdateTxSignature = async (req, res, next) => {
+  const { _id, transactionSignatureID, transactionPassword } = req.user;
+  const { current_tx_password, keypair } = req.body;
+
+  await Validation.text("current_tx_password", 8, 40).run(req);
+  await Validation.text("keypair", 8, 40).run(req);
+
+  // check transactionPassword on account
+  if (!transactionPassword)
+    return sendError(res, {
+      message:
+        "Error: Transaction password is required, please save your transaction password and then continue.",
+    });
+
+  // validate transactionPassword
+  let isMatch = req.user.matchTxPassword(current_tx_password);
+
+  if (!isMatch)
+    return sendError(res, {
+      message: "Error: Incorrect transaction password",
+    });
+
+  // Validate new transaction signature
+  let signatureKeypair = Keypair.fromSecret(keypair.secretKey);
+  if (!signatureKeypair || signatureKeypair.publicKey() != keypair.publicKey)
+    return sendError(res, {
+      message: "Error: Transaction signature keypair is invalid.",
+    });
+
+  const newTransactionSignatureID = keypair.publicKey;
+  const transactionSignatureKey = req.user.encryptTxSignatureKey(
+    keypair.secretKey,
+    current_tx_password
+  );
+
+  if (!transactionSignatureKey)
+    return sendError(res, {
+      message: "Error: Unexpected issue, please contact the support team.",
+    });
+
+  if (transactionSignatureID) {
+    let tx_signature_key = req.user.decryptTxSignatureKey(current_tx_password);
+    if (!tx_signature_key)
+      return sendError(res, {
+        message:
+          "Error: Transaction password is invalid, try after changing your transaction password using the existing signature secret",
+      });
+
+    // if has accounts update the signer
+    this.UpdateTxSignatureForAllBlockchainAccountsFn();
+  }
+
+  GeneralAccountDao.update(_id, {
+    transactionSignatureID: newTransactionSignatureID,
+    transactionSignatureKey,
+  })
+    .then(() =>
+      sendSuccess(res, {
+        message: "Transaction signature was saved successfully",
+      })
+    )
+    .catch(() =>
+      sendError(res, {
+        message: "Error: Transaction signature was not saved",
+      })
+    );
+};
+
+const UpdateTxSignatureForAllBlockchainAccountsFn = async () => {};
+
+// delete
+exports.ResetTransactionSignature = async (req, res, next) => {
+  const { _id } = req.user;
+
+  // remove all blockchain accounts
+
+  GeneralAccountDao.update(_id, {
+    transactionPassword: null,
+    transactionSignatureID: null,
+    transactionSignatureKey: null,
+  })
+    .then(() =>
+      sendSuccess(res, {
+        message:
+          "All blockchain accounts were removed and transaction signature was reset successfully",
+      })
+    )
+    .catch(() =>
+      sendError(res, {
+        message: "Error: Transaction signature was not reset",
       })
     );
 };
