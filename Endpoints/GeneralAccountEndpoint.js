@@ -1,17 +1,19 @@
 const { sendSuccess, sendError } = require("../Common/util");
-const { SMS_NUMBER, SMS_PASS } = require("../Config");
 const GeneralAccountDao = require("../Dao/GeneralAccountDao");
 const JWTTokenDao = require("../Dao/JWTTokenDao");
 const { ErrorCodeEnum } = require("../Models/ErrorModel");
 const twofactor = require("node-2fa");
 var sha256 = require("js-sha256");
-const axios = require("axios");
-const { Keypair } = require("stellar-sdk");
+const {
+  UpdateTxSignatureForAllUserBlockchainAccountsFn,
+  ForceRemoveAllUserBlockchainAccounts,
+} = require("./BlockchainAccountEP");
 const { Validation } = require("../Validation");
 const { ValidateRequest } = require("../Middlewares/ValidateRequest");
 const bcrypt = require("bcrypt");
 const { sendSms } = require("../Util/SmsService");
 const { sendMail } = require("../Util/MailService");
+const RSA = require("../Util/RSA.service");
 
 const pwd_rtoken_exp_at_minutes = 15;
 const phone_vtoken_exp_at_minutes = 15;
@@ -165,9 +167,11 @@ exports.ResetPassword = async (req, res, next) => {
   await Validation.text("nationalID", 4, 20).run(req);
   await Validation.text("raw_password", 8, 20).run(req);
 
-  await Promise.resolve()
-    .then(() => ValidateRequest(req))
-    .catch(next);
+  try {
+    ValidateRequest(req);
+  } catch (err) {
+    return next(err);
+  }
 
   const hashed_reset_code = sha256(reset_code.toString());
   // match nic and reset code
@@ -224,9 +228,11 @@ exports.UpdateTempPhone = async (req, res, next) => {
 
   await Validation.number("temp_phone", 9, 13).run(req);
 
-  await Promise.resolve()
-    .then(() => ValidateRequest(req))
-    .catch(next);
+  try {
+    ValidateRequest(req);
+  } catch (err) {
+    return next(err);
+  }
 
   if (
     loggedUser.tempPhone == temp_phone &&
@@ -293,9 +299,11 @@ exports.VerifyAndUpdatePhone = async (req, res, next) => {
 
   await Validation.number("verification_code", 6, 6).run(req);
 
-  await Promise.resolve()
-    .then(() => ValidateRequest(req))
-    .catch(next);
+  try {
+    ValidateRequest(req);
+  } catch (err) {
+    return next(err);
+  }
 
   const hashed_verification_code = sha256(verification_code.toString());
 
@@ -354,9 +362,11 @@ exports.UpdateAccountPassword = async (req, res, next) => {
 
   await Validation.text("raw_password", 8, 40).run(req);
 
-  await Promise.resolve()
-    .then(() => ValidateRequest(req))
-    .catch(next);
+  try {
+    ValidateRequest(req);
+  } catch (err) {
+    return next(err);
+  }
 
   const encrypted_pwd = bcrypt.hashSync(raw_password, 12);
 
@@ -453,10 +463,11 @@ exports.ConfirmMobile = async (req, res, next) => {
   const loggedUser = req.user;
   const { verification_code } = req.body;
   await Validation.number("verification_code", 6, 6).run(req);
-
-  await Promise.resolve()
-    .then(() => ValidateRequest(req))
-    .catch(next);
+  try {
+    ValidateRequest(req);
+  } catch (err) {
+    return next(err);
+  }
 
   const hashed_verification_code = sha256(verification_code.toString());
 
@@ -488,10 +499,11 @@ exports.Confirm2FA = async (req, res, next) => {
   const loggedUser = req.user;
   const { auth_code } = req.body;
   await Validation.number("auth_code", 6, 6).run(req);
-
-  await Promise.resolve()
-    .then(() => ValidateRequest(req))
-    .catch(next);
+  try {
+    ValidateRequest(req);
+  } catch (err) {
+    return next(err);
+  }
 
   if (!loggedUser.isTwoFactorEnabled)
     return sendError(res, {
@@ -558,9 +570,11 @@ exports.Activate2FA = async (req, res, next) => {
 
   await Validation.number("auth_code", 6, 6).run(req);
 
-  await Promise.resolve()
-    .then(() => ValidateRequest(req))
-    .catch(next);
+  try {
+    ValidateRequest(req);
+  } catch (err) {
+    return next(err);
+  }
 
   if (!loggedUser.two_factor_secret)
     return sendError(res, {
@@ -751,6 +765,12 @@ exports.UpdateTxPassword = async (req, res, next) => {
 
   await Validation.text("raw_tx_password", 8, 40).run(req);
 
+  try {
+    ValidateRequest(req);
+  } catch (err) {
+    return next(err);
+  }
+
   if (transactionSignatureID) {
     if (raw_old_tx_password) {
       let isMatch = req.user.matchTxPassword(raw_old_tx_password);
@@ -774,11 +794,11 @@ exports.UpdateTxPassword = async (req, res, next) => {
           message: "Error: Incorrect transaction password",
         });
     } else if (raw_tx_signature_key) {
-      let signatureKeypair = Keypair.fromSecret(raw_tx_signature_key);
-      if (
-        signatureKeypair &&
-        signatureKeypair.publicKey() == loggedUser.transactionSignatureID
-      )
+      let isVerified = RSA.IsValidPublicKeyForPrivateKey(
+        raw_tx_signature_key,
+        transactionSignatureID
+      );
+      if (isVerified)
         return this.UpdateTxPasswordFn(
           req,
           res,
@@ -794,7 +814,7 @@ exports.UpdateTxPassword = async (req, res, next) => {
         message:
           "Error: Current transaction password or signature key is required to update transaction password",
       });
-  } else return this.UpdateTxPasswordFn(req, res, raw_tx_password, null);
+  } else return UpdateTxPasswordFn(req, res, raw_tx_password, null);
 };
 
 const UpdateTxPasswordFn = async (
@@ -807,7 +827,7 @@ const UpdateTxPasswordFn = async (
   const transactionPassword = bcrypt.hashSync(raw_tx_password, 12);
   const transactionSignatureKey = tx_signature_key
     ? loggedUser.encryptTxSignatureKey(tx_signature_key, raw_tx_password)
-    : undefined;
+    : null;
 
   // update password
   GeneralAccountDao.update(loggedUser._id, {
@@ -850,8 +870,11 @@ exports.UpdateTxSignature = async (req, res, next) => {
     });
 
   // Validate new transaction signature
-  let signatureKeypair = Keypair.fromSecret(keypair.secretKey);
-  if (!signatureKeypair || signatureKeypair.publicKey() != keypair.publicKey)
+  let isVerified = RSA.IsValidPublicKeyForPrivateKey(
+    keypair.secretKey,
+    keypair.publicKey
+  );
+  if (!isVerified)
     return sendError(res, {
       message: "Error: Transaction signature keypair is invalid.",
     });
@@ -867,6 +890,7 @@ exports.UpdateTxSignature = async (req, res, next) => {
       message: "Error: Unexpected issue, please contact the support team.",
     });
 
+  var failedAccountList;
   if (transactionSignatureID) {
     let tx_signature_key = req.user.decryptTxSignatureKey(current_tx_password);
     if (!tx_signature_key)
@@ -876,7 +900,18 @@ exports.UpdateTxSignature = async (req, res, next) => {
       });
 
     // if has accounts update the signer
-    this.UpdateTxSignatureForAllBlockchainAccountsFn();
+    var failedAccountList =
+      await UpdateTxSignatureForAllUserBlockchainAccountsFn(
+        req.user._id,
+        tx_signature_key,
+        newTransactionSignatureID
+      );
+
+    // if (!result)
+    //   return sendError(res, {
+    //     message:
+    //       "Error: Could not update the transaction signature please try again latter or contact the support team.",
+    //   });
   }
 
   GeneralAccountDao.update(_id, {
@@ -886,22 +921,23 @@ exports.UpdateTxSignature = async (req, res, next) => {
     .then(() =>
       sendSuccess(res, {
         message: "Transaction signature was saved successfully",
+        failedAccountList,
       })
     )
     .catch(() =>
       sendError(res, {
         message: "Error: Transaction signature was not saved",
+        failedAccountList,
       })
     );
 };
-
-const UpdateTxSignatureForAllBlockchainAccountsFn = async () => {};
 
 // delete
 exports.ResetTransactionSignature = async (req, res, next) => {
   const { _id } = req.user;
 
   // remove all blockchain accounts
+  await ForceRemoveAllUserBlockchainAccounts(_id);
 
   GeneralAccountDao.update(_id, {
     transactionPassword: null,

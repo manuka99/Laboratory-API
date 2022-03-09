@@ -6,12 +6,13 @@ const JWTTokenDao = require("../../Dao/JWTTokenDao");
 const { AUTH_SECRET } = require("../../Config");
 const sha256 = require("js-sha256");
 const CryptoJS = require("crypto-js");
+const { UserEnum } = require("../../Models/UserModel");
 
 const GeneralAccountSchema = new Schema(
   {
     type: {
       type: String,
-      default: "GENERAL",
+      default: UserEnum.GENERAL,
     },
     firstName: {
       type: String,

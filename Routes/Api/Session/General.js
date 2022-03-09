@@ -1,22 +1,26 @@
 const SessionEndpoint = require("../../../Endpoints/SessionEndpoint");
+const RoutesEnum = require("../../../Models/RouteModel");
 
-exports.GeneralSessionRoutes = (app) => {
-  app.get("/api/general/sessions", SessionEndpoint.getUserSessions);
-  app.get("/api/general/sessions/:id", SessionEndpoint.getUserSession);
-  app.post(
-    "/api/general/revoke-sessions",
+exports.GeneralSessionRoutes = (router) => {
+  router.get(`${RoutesEnum.GENERAL}/sessions`, SessionEndpoint.getUserSessions);
+  router.get(
+    `${RoutesEnum.GENERAL}/sessions/:id`,
+    SessionEndpoint.getUserSession
+  );
+  router.post(
+    `${RoutesEnum.GENERAL}/revoke-sessions`,
     SessionEndpoint.revokeAllUserSessions
   );
-  app.post(
-    "/api/general/revoke-sessions/:id",
+  router.post(
+    `${RoutesEnum.GENERAL}/revoke-sessions/:id`,
     SessionEndpoint.revokeUserSession
   );
-  app.delete(
-    "/api/general/sessions",
+  router.delete(
+    `${RoutesEnum.GENERAL}/sessions`,
     SessionEndpoint.deleteAllInvalidUserSession
   );
-  app.delete(
-    "/api/general/sessions/:id",
+  router.delete(
+    `${RoutesEnum.GENERAL}/sessions/:id`,
     SessionEndpoint.deleteOneInvalidTokenOfUser
   );
 };

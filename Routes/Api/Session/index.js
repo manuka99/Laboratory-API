@@ -1,5 +1,5 @@
 const { GeneralSessionRoutes } = require("./General");
 
-exports.SessionRoutes = (app) => {
-  GeneralSessionRoutes(app);
+exports.SessionRoutes = (router) => {
+  GeneralSessionRoutes(router);
 };
