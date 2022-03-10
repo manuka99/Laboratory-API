@@ -61,11 +61,10 @@ exports.IsValidPublicKeyForPrivateKey = (
   rawComparePublicKey
 ) => {
   try {
-    const PemKeys = KeypairFromRawPrivate(rawPrivateKey);
+    const PemKeys = this.KeypairFromRawPrivate(rawPrivateKey);
     var comparePublicKey = pki.publicKeyFromPem(
       PUBLIC_KEY_HEADER + rawComparePublicKey + PUBLIC_KEY_FOOTER
     );
-    console.log();
     return (
       PemKeys.publicKey.n.compareTo(comparePublicKey.n) == 0 &&
       PemKeys.publicKey.e.compareTo(comparePublicKey.e) == 0
@@ -77,7 +76,7 @@ exports.IsValidPublicKeyForPrivateKey = (
 
 exports.EncryptWithRawPublicKey = (rawPublicKey, rawData) => {
   try {
-    const publicKey = PublicKeyFromRawPublic(rawPublicKey);
+    const publicKey = this.PublicKeyFromRawPublic(rawPublicKey);
     var encrypted = publicKey.encrypt(
       util.encodeUtf8(rawData),
       "RSAES-PKCS1-V1_5"
@@ -91,7 +90,7 @@ exports.EncryptWithRawPublicKey = (rawPublicKey, rawData) => {
 
 exports.DecryptWithRawPrivateKey = (rawPrivateKey, encryptedBase64) => {
   try {
-    const { privateKey } = KeypairFromRawPrivate(rawPrivateKey);
+    const { privateKey } = this.KeypairFromRawPrivate(rawPrivateKey);
     var decrypted = privateKey.decrypt(
       util.decode64(encryptedBase64),
       "RSAES-PKCS1-V1_5"

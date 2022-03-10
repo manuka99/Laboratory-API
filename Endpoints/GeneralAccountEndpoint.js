@@ -759,7 +759,7 @@ exports.GetTxSecurityInfo = async (req, res, next) => {
 
 // patch
 exports.UpdateTxPassword = async (req, res, next) => {
-  const { transactionSignatureID } = req.user;
+  const { transactionSignatureID, transactionPassword } = req.user;
   const { raw_old_tx_password, raw_tx_signature_key, raw_tx_password } =
     req.body;
 
@@ -778,7 +778,7 @@ exports.UpdateTxPassword = async (req, res, next) => {
         let tx_signature_key =
           req.user.decryptTxSignatureKey(raw_old_tx_password);
         if (tx_signature_key)
-          return this.UpdateTxPasswordFn(
+          return UpdateTxPasswordFn(
             req,
             res,
             raw_tx_password,
@@ -799,7 +799,7 @@ exports.UpdateTxPassword = async (req, res, next) => {
         transactionSignatureID
       );
       if (isVerified)
-        return this.UpdateTxPasswordFn(
+        return UpdateTxPasswordFn(
           req,
           res,
           raw_tx_password,
@@ -814,7 +814,24 @@ exports.UpdateTxPassword = async (req, res, next) => {
         message:
           "Error: Current transaction password or signature key is required to update transaction password",
       });
-  } else return UpdateTxPasswordFn(req, res, raw_tx_password, null);
+  } else {
+    if (transactionPassword) {
+      if (raw_old_tx_password) {
+        let isMatch = req.user.matchTxPassword(raw_old_tx_password);
+        if (isMatch) return UpdateTxPasswordFn(req, res, raw_tx_password, null);
+        else
+          return sendError(res, {
+            message:
+              "Error: Transaction password is invalid, please enter your transaction password or force reset and create new one.",
+          });
+      } else
+        return sendError(res, {
+          message:
+            "Error: Current transaction password is required to update transaction password",
+        });
+    }
+    return UpdateTxPasswordFn(req, res, raw_tx_password, null);
+  }
 };
 
 const UpdateTxPasswordFn = async (
@@ -871,7 +888,7 @@ exports.UpdateTxSignature = async (req, res, next) => {
 
   // Validate new transaction signature
   let isVerified = RSA.IsValidPublicKeyForPrivateKey(
-    keypair.secretKey,
+    keypair.privateKey,
     keypair.publicKey
   );
   if (!isVerified)
@@ -881,7 +898,7 @@ exports.UpdateTxSignature = async (req, res, next) => {
 
   const newTransactionSignatureID = keypair.publicKey;
   const transactionSignatureKey = req.user.encryptTxSignatureKey(
-    keypair.secretKey,
+    keypair.privateKey,
     current_tx_password
   );
 
