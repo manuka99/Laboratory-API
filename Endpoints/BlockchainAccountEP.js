@@ -1,16 +1,36 @@
-const { sendSuccess, sendError } = require("../Common/util");
+const { sendSuccess, sendError, FilterData } = require("../Common/util");
 const BlockchainAccountDao = require("../Dao/BlockchainAccountDao");
 const RSA = require("../Util/RSA.service");
 const { Validation } = require("../Validation");
 const { ValidateRequest } = require("../Middlewares/ValidateRequest");
 
 exports.FindBlockchainAccounts = async (req, res, next) => {
-  BlockchainAccountDao.FindAccounts({
-    userID: req.user._id,
-  })
+  const filteredQuery = FilterData(req.query, [
+    "_id",
+    "userID",
+    "userType",
+    "publicKey",
+    "name",
+    "isLocked",
+    "sponsorID",
+  ]);
+
+  filteredQuery.userID = req.user._id;
+  filteredQuery.userType = req.user.type;
+
+  if (req.query.search) filteredQuery.$text = { $search: req.query.search };
+  if (req.query.accountType)
+    filteredQuery.accountType = {
+      $in: req.query.accountType.split(","),
+    };
+
+  const limit = parseInt(req.query.limit) ? parseInt(req.query.limit) : 10;
+  const page = parseInt(req.query.page) ? parseInt(req.query.page) : 0;
+
+  BlockchainAccountDao.FindAccounts(filteredQuery, req.query.sort, limit, page)
     .then((bcAccounts) =>
       sendSuccess(res, {
-        message: `Blockchain account was saved successfully`,
+        // message: `Blockchain accounts were retrieved successfully`,
         bcAccounts,
       })
     )
@@ -34,16 +54,29 @@ exports.FindBlockchainAccount = async (req, res, next) => {
 
 exports.CreateBlockchainAccount = async (req, res, next) => {
   const { _id, type, transactionSignatureID } = req.user;
-  const { name, description, keypair } = req.body;
+  const {
+    name,
+    description,
+    crntTransactionSignatureID,
+    accountType,
+    keypair,
+    sponsorID,
+    sponsorTX,
+  } = req.body;
 
   if (!transactionSignatureID)
     return sendError(res, {
       message: `Transaction signature is required to save blockchain account, try again after creating your transaction signature`,
     });
 
-  // info validation
-  await Validation.text("name", 2, 24).run(req);
-  await Validation.text("description", 0, 120).run(req);
+  const filteredData = JSON.parse(
+    JSON.stringify(req.body, ["name", "description", "isWallet", "isChannel"])
+  );
+
+  // request body validation
+  if (filteredData.name) await Validation.text("name", 2, 24).run(req);
+  if (filteredData.description)
+    await Validation.text("description", 0, 120).run(req);
 
   try {
     ValidateRequest(req);
@@ -51,25 +84,58 @@ exports.CreateBlockchainAccount = async (req, res, next) => {
     return next(err);
   }
 
-  const base64EncryptedBCAccountSecretKey = RSA.EncryptWithRawPublicKey(
-    transactionSignatureID,
-    keypair.secretKey
-  );
+  // transaction signature validation
+  if (crntTransactionSignatureID != transactionSignatureID)
+    return sendError(res, {
+      message: `Transaction signature is incorrect or might have been updated, please refresh the site and try again`,
+    });
 
-  BlockchainAccountDao.CreateBlockchainAccount({
-    userID: _id,
-    userType: type,
-    publicKey: keypair.publicKey,
-    secretKey: base64EncryptedBCAccountSecretKey,
-    name,
-    description,
-  })
-    .then(() =>
-      sendSuccess(res, {
-        message: `Blockchain account was saved successfully`,
-      })
-    )
-    .catch(next);
+  // validate keypair
+  if (!keypair || !keypair.publicKey || !keypair.secretKey)
+    return sendError(res, {
+      message: `Blockchain account keypair is missing or invalid.`,
+    });
+
+  if (accountType == "wallet") {
+    BlockchainAccountDao.CreateAccounts({
+      userID: _id,
+      userType: type,
+      name,
+      description,
+      accountType,
+      publicKey: keypair.publicKey,
+      secretKey: keypair.secretKey,
+    })
+      .then(() =>
+        sendSuccess(res, {
+          message: `Blockchain account was saved successfully`,
+        })
+      )
+      .catch(next);
+  } else if (accountType == "channel") {
+    const base64EncryptedBCAccountSecretKey = RSA.EncryptWithRawPublicKey(
+      transactionSignatureID,
+      keypair.secretKey
+    );
+
+    BlockchainAccountDao.CreateAccounts({
+      userID: _id,
+      userType: type,
+      publicKey: keypair.publicKey,
+      secretKey: base64EncryptedBCAccountSecretKey,
+      name,
+      description,
+    })
+      .then(() =>
+        sendSuccess(res, {
+          message: `Blockchain account was saved successfully`,
+        })
+      )
+      .catch(next);
+  } else
+    return sendError(res, {
+      message: `Invalid account type.`,
+    });
 };
 
 exports.UpdateBlockchainAccountInfo = async (req, res, next) => {

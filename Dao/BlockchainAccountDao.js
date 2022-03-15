@@ -10,8 +10,16 @@ exports.UpdateAccounts = async (query, data) => {
   return accounts;
 };
 
-exports.FindAccounts = async (query) => {
-  const accounts = await BlockchainAccount.find(query);
+exports.FindAccounts = async (
+  query,
+  sort = { _id: "asc" },
+  limit = 10,
+  page = 0
+) => {
+  const accounts = await BlockchainAccount.find(query)
+    .sort(sort)
+    .limit(limit)
+    .skip(limit * page);
   return accounts;
 };
 

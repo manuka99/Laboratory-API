@@ -1,5 +1,5 @@
 const BlockchainAccountEP = require("../../Endpoints/BlockchainAccountEP");
-const RoutesEnum = require("../../../Models/RouteModel");
+const RoutesEnum = require("../../Models/RouteModel");
 
 exports.BlockchainAccountRoutes = (router) => {
   router.get(

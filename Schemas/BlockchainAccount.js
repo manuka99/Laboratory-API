@@ -10,7 +10,7 @@ const BlockchainAccountSchema = new Schema(
     userType: {
       type: String,
       required: true,
-      enum: [UserEnum.GENERAL, UserEnum.SERVICE]
+      enum: [UserEnum.GENERAL, UserEnum.SERVICE],
     },
     publicKey: {
       type: String,
@@ -24,23 +24,42 @@ const BlockchainAccountSchema = new Schema(
       type: String,
       required: true,
     },
-    description: String,
-    isWallet: Boolean,
-    isChannel: Boolean,
-    isLocked: Boolean,
-    lockSequence: String,
+    description: {
+      type: String,
+      required: false,
+    },
+    accountType: {
+      type: String,
+      required: true,
+      enum: ["wallet", "channel"],
+    },
+    sponsorID: {
+      type: String,
+      required: false,
+    },
+    isLocked: {
+      type: Boolean,
+      default: false,
+    },
+    lockSequence: {
+      type: String,
+      default: null,
+    },
     lockTransaction: {
       type: Types.ObjectId,
+      default: null,
       ref: "transaction",
     },
   },
   { timestamps: true }
 );
 
-BlockchainAccountSchema.index({ 'userID': 1, 'publicKey': 1 }, { unique: true });
+BlockchainAccountSchema.index({ userID: 1, publicKey: 1 }, { unique: true });
+BlockchainAccountSchema.index({
+  name: "text",
+  description: "text",
+  publicKey: "text",
+});
 
-const BlockchainAccount = model(
-  "blockchain_sub_account",
-  BlockchainAccountSchema
-);
+const BlockchainAccount = model("blockchain_account", BlockchainAccountSchema);
 module.exports = BlockchainAccount;

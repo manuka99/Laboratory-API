@@ -751,7 +751,7 @@ exports.GetTxSecurityInfo = async (req, res, next) => {
       : null;
 
   return sendSuccess(res, {
-    message: "Retrieved: Transaction security information.",
+    // message: "Retrieved: Transaction security information.",
     transactionSignatureID,
     transactionPasswordHash,
   });

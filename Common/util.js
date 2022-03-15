@@ -1,4 +1,3 @@
-
 const sendSuccess = (res, data) => {
   res.status(200).json({ success: true, data });
 };
@@ -30,8 +29,15 @@ const FormatValidationError = (err) => {
   }
 };
 
+const FilterData = (data, filters) => {
+  return JSON.parse(
+    JSON.stringify(data, filters)
+  );
+};
+
 module.exports = {
   sendSuccess,
   sendError,
   FormatValidationError,
+  FilterData
 };
