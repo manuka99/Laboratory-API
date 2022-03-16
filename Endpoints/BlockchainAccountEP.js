@@ -198,6 +198,7 @@ exports.RemoveBlockchainAccount = async (req, res, next) => {
     .then(() =>
       sendSuccess(res, {
         message: `Account was removed successfully`,
+        id
       })
     )
     .catch(() =>
