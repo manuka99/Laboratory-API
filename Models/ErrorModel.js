@@ -1,4 +1,4 @@
-const ErrorCodeEnum = Object.freeze({
+exports.ErrorCodeEnum = Object.freeze({
   USER_TYPE: "USER_TYPE",
   TWO_FACTOR_AUTH: "TWO_FACTOR_AUTH",
   PHONE_AUTH: "PHONE_AUTH",
@@ -10,4 +10,3 @@ const ErrorCodeEnum = Object.freeze({
   TX_PASSWORD_VERIFICATION: "TX_PASSWORD_VERIFICATION",
 });
 
-module.exports = { ErrorCodeEnum };

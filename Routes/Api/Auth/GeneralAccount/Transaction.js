@@ -3,11 +3,21 @@ const {
   ActPwdVerified,
 } = require("../../../../Middlewares/Verification/PasswordVerified");
 const RoutesEnum = require("../../../../Models/RouteModel");
+const {
+  TxnPwdVerified,
+} = require("../../../../Middlewares/Verification/TxnPasswordVerified");
+
 
 exports.GeneralTransactionAuthRoutes = (router) => {
   /* Authorized Routes */
 
   // General
+  router.get(
+    `${RoutesEnum.GENERAL}/tx-confirm`,
+    TxnPwdVerified,
+    GeneralAccountEndpoint.ConfirmTxSecurity
+  );
+
   router.get(
     `${RoutesEnum.GENERAL}/tx-security`,
     ActPwdVerified,

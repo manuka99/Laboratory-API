@@ -742,6 +742,15 @@ exports.VerifyEmailAndUpdate = async (req, res, next) => {
     );
 };
 
+//  ************* TRANSACTION SECURITY *****************
+
+// get
+exports.ConfirmTxSecurity = (req, res, next) => {
+  return sendSuccess(res, {
+    message: "Confirmed: Transaction security password.",
+  });
+};
+
 // get
 exports.GetTxSecurityInfo = async (req, res, next) => {
   const { transactionSignatureID, transactionPassword } = req.user;
