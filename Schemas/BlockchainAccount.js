@@ -18,6 +18,7 @@ const BlockchainAccountSchema = new Schema(
     },
     secretKey: {
       type: String,
+      select: false,
       required: true,
     },
     name: {

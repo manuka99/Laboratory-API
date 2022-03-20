@@ -48,4 +48,14 @@ exports.AppMiddlewares = (app) => {
   //   AccountUnlocked,
   //   PhoneAuthorized
   // );
+
+  // Users
+  app.use(
+    `${RoutesEnum.API}${RoutesEnum.USER}/`,
+    Authenticate(),
+    AccountUnlocked,
+    AccountApproved,
+    PhoneAuthorized,
+    TwoFactorAuthorized
+  );
 };

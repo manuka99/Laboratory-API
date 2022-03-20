@@ -16,6 +16,8 @@ const RoutesEnum = Object.freeze({
   GENERAL: "/general",
   GENERAL_ADMIN: "/general/admin",
   ADMIN_GENERAL: "/admin/general",
+
+  USER: "/user",
 });
 
 module.exports = RoutesEnum;

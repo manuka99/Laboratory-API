@@ -14,12 +14,22 @@ exports.FindAccounts = async (
   query,
   sort = { _id: "asc" },
   limit = 10,
-  page = 0
+  page = 0,
+  isSecret = false
 ) => {
-  const accounts = await BlockchainAccount.find(query)
-    .sort(sort)
-    .limit(limit)
-    .skip(limit * page);
+  var accounts = null;
+  if (isSecret) {
+    accounts = await BlockchainAccount.find(query)
+      .sort(sort)
+      .limit(limit)
+      .skip(limit * page)
+      .select("+secretKey");
+  } else {
+    accounts = await BlockchainAccount.find(query)
+      .sort(sort)
+      .limit(limit)
+      .skip(limit * page);
+  }
   return accounts;
 };
 
