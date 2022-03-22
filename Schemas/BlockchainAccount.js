@@ -1,16 +1,11 @@
 const { Schema, model, Types } = require("mongoose");
-const { UserEnum } = require("../Models/UserModel");
 
 const BlockchainAccountSchema = new Schema(
   {
     userID: {
       type: Types.ObjectId,
       required: true,
-    },
-    userType: {
-      type: String,
-      required: true,
-      enum: [UserEnum.GENERAL, UserEnum.SERVICE],
+      ref: "user"
     },
     publicKey: {
       type: String,

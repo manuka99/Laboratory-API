@@ -1,6 +1,4 @@
-const UserEnum = Object.freeze({
-  GENERAL: "GENERAL",
-  SERVICE: "SERVICE",
+exports.UserModel = Object.freeze({
+  GENERAL: "general",
+  ADMIN: "admin",
 });
-
-module.exports = { UserEnum };

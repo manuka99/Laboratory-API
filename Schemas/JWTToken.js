@@ -6,11 +6,7 @@ const {
 
 const TokenSchema = new Schema(
   {
-    user_id: { type: ObjectId },
-    user_type: {
-      type: String,
-      enum: ["GENERAL", "SERVICE"],
-    },
+    user_id: { type: ObjectId, ref: "user" },
     token: { type: String, select: false },
     ip_address: String,
     user_agent: String,

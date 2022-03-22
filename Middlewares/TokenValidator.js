@@ -1,5 +1,5 @@
 var jwt = require("jsonwebtoken");
-const GeneralAccountDao = require("../Dao/GeneralAccountDao");
+const UserDao = require("../Dao/UserAccountDao")();
 const JWTTokenDao = require("../Dao/JWTTokenDao");
 const { AUTH_SECRET } = require("../Config/index");
 var getIP = require("ipware")().get_ip;
@@ -15,17 +15,9 @@ exports.TokenValidator = async (req, res, next) => {
     const decodedToken = jwt.verify(token, AUTH_SECRET);
 
     const decodedUserData = decodedToken.data;
-    const UserDao =
-      decodedUserData.type == UserEnum.GENERAL
-        ? GeneralAccountDao
-        : decodedUserData.type == UserEnum.SERVICE
-        ? GeneralAccountDao
-        : null;
-
-    if (!UserDao) throw new Error("Invalid user type!");
 
     // fetch user by decoded rtoken user id
-    const user = await UserDao.findUser({ _id: decodedUserData.user_id }, true);
+    const user = await UserDao.findUser({ _id: decodedUserData._id }, true);
 
     // invalid user
     if (!user) throw new Error("Invalid user!");

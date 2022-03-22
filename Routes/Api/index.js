@@ -3,6 +3,7 @@ const { ExplorerRoutes } = require("./Explorer");
 const { SessionRoutes } = require("./Session");
 const { BlockchainAccountRoutes } = require("./BlockchainAccount");
 const { TransactionRoutes } = require("./Transaction");
+const { AccountRoutes } = require("./User");
 const express = require("express");
 const router = express.Router();
 
@@ -20,6 +21,9 @@ BlockchainAccountRoutes(router);
 
 // Transaction Routes
 TransactionRoutes(router);
+
+// Account Routes
+AccountRoutes(router);
 
 // Invalid Routes
 // router.use("*", (req, res) => sendError(res, "Resource not found!"));

@@ -1,5 +1,5 @@
-const { GeneralAccountExplorerRoutes } = require("../Explorer/GeneralUser");
+// const { GeneralAccountExplorerRoutes } = require("../Explorer/GeneralUser");
 
-exports.ExplorerRoutes = (app) => {
-  GeneralAccountExplorerRoutes(app);
+exports.ExplorerRoutes = (router) => {
+  // GeneralAccountExplorerRoutes(router);
 };

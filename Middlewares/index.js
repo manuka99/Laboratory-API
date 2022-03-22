@@ -1,4 +1,4 @@
-const { UserEnum } = require("../Models/UserModel");
+const UserModel = require("../Models/UserModel");
 const { TokenValidator } = require("./TokenValidator");
 const { GuestUser } = require("./GuestUser");
 const { Authenticate } = require("./Authorization/Authenticate");
@@ -20,11 +20,11 @@ exports.AppMiddlewares = (app) => {
   app.use(`${RoutesEnum.API}${RoutesEnum.AUTH}/`, Authenticate());
   app.use(
     `${RoutesEnum.API}${RoutesEnum.AUTH_GENERAL}/`,
-    Authenticate(UserEnum.GENERAL)
+    Authenticate(UserModel.GENERAL)
   );
   app.use(
     `${RoutesEnum.API}${RoutesEnum.AUTH_ADMIN}/`,
-    Authenticate(UserEnum.SERVICE)
+    Authenticate(UserModel.SERVICE)
   );
 
   /* AUTHORIZATION */
@@ -32,7 +32,7 @@ exports.AppMiddlewares = (app) => {
   // For General Accounts
   app.use(
     `${RoutesEnum.API}${RoutesEnum.GENERAL}/`,
-    Authenticate(UserEnum.GENERAL),
+    Authenticate(UserModel.GENERAL),
     AccountUnlocked,
     AccountApproved,
     PhoneAuthorized,
@@ -42,7 +42,7 @@ exports.AppMiddlewares = (app) => {
   // For Service Accounts
   // app.use(
   //   `${RoutesEnum.API}${RoutesEnum.ADMIN}/`,
-  //   Authenticate(UserEnum.SERVICE),
+  //   Authenticate(UserModel.SERVICE),
   //   TwoFactorAuthorized,
   //   AccountApproved,
   //   AccountUnlocked,
