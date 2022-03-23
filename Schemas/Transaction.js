@@ -1,30 +1,50 @@
-const { Schema, model, Types } = require("mongoose");
+const {
+  Schema,
+  model,
+  Types: { ObjectId },
+} = require("mongoose");
+const TransactionPermission = require("./TransactionPermission");
 
 const TransactionSchema = new Schema(
   {
-    title: String,
+    title: {
+      type: String,
+      required: true,
+    },
     description: String,
+    projectID: { type: ObjectId, ref: "project" },
+    raw_data: Object,
     txnHash: String,
     txnXdr: String,
-    txnHash: String,
-    txnHash: String,
-    code: {
-      type: String,
-      required: true,
-      unique: true,
-    },
-    accountID: {
-      type: String,
-      required: true,
-      unique: true,
-    },
-    description: {
-      type: String,
-      required: true,
+    signedTxnXdr: String,
+    network: String,
+    expire_at: Date,
+    signatures: [
+      {
+        accountID: { type: String },
+        sign: { type: String },
+        user: { type: ObjectId, ref: "user" },
+      },
+    ],
+    owner: {
+      type: ObjectId,
+      ref: "user",
     },
   },
   { timestamps: true }
 );
 
+TransactionSchema.index({ network: 1, txnHash: 1 }, { unique: true });
+TransactionSchema.index({ network: 1, txnXdr: 1 }, { unique: true });
+TransactionSchema.index({ network: 1, signedTxnXdr: 1 }, { unique: true });
+TransactionSchema.index({
+  title: "text",
+  description: "text",
+  network: "text",
+});
+TransactionSchema.post("remove", async function (res, next) {
+  await TransactionPermission.deleteMany({ txnID: this._id });
+  next();
+});
 const Transaction = model("transaction", TransactionSchema);
 module.exports = Transaction;

@@ -30,14 +30,17 @@ const FormatValidationError = (err) => {
 };
 
 const FilterData = (data, filters) => {
-  return JSON.parse(
-    JSON.stringify(data, filters)
-  );
+  return JSON.parse(JSON.stringify(data, filters));
+};
+
+const FutureDate = (minutes) => {
+  return new Date(new Date().getTime() + 60 * 1000 * minutes);
 };
 
 module.exports = {
   sendSuccess,
   sendError,
   FormatValidationError,
-  FilterData
+  FilterData,
+  FutureDate
 };

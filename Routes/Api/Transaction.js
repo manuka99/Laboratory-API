@@ -5,29 +5,39 @@ const {
 } = require("../../Middlewares/Verification/TxnPasswordVerified");
 
 exports.TransactionRoutes = (router) => {
-  // router.get(
-  //   `${RoutesEnum.GENERAL}/blockchain-account`,
-  //   TransactionEP.FindBlockchainAccounts
-  // );
-  // router.get(
-  //   `${RoutesEnum.GENERAL}/blockchain-account/:id`,
-  //   TransactionEP.FindBlockchainAccount
-  // );
   router.post(
     `${RoutesEnum.USER}/sign-transaction`,
     TxnPwdVerified,
     TransactionEP.SignTransaction
   );
-  // router.patch(
-  //   `${RoutesEnum.GENERAL}/blockchain-account/:id`,
-  //   TransactionEP.UpdateBlockchainAccountInfo
-  // );
-  // router.patch(
-  //   `${RoutesEnum.GENERAL}/unlock-blockchain-account/:id`,
-  //   TransactionEP.UnLockBlockchainAccount
-  // );
-  // router.delete(
-  //   `${RoutesEnum.GENERAL}/blockchain-account/:id`,
-  //   TransactionEP.RemoveBlockchainAccount
-  // );
+
+  router.post(
+    `${RoutesEnum.USER}/create-temp-transaction`,
+    TransactionEP.CreateTempTxn
+  );
+
+  router.post(
+    `${RoutesEnum.USER}/add-sign`,
+    TransactionEP.AddSign
+  );
+
+  router.post(
+    `${RoutesEnum.USER}/remove-sign`,
+    TransactionEP.RemoveSign
+  );
+
+  router.get(
+    `${RoutesEnum.USER}/find-created-transactions`,
+    TransactionEP.FindCreatedTransactions
+  );
+
+  router.get(
+    `${RoutesEnum.USER}/find-shared-transactions`,
+    TransactionEP.FindSharedTransactions
+  );
+
+  router.get(
+    `${RoutesEnum.USER}/find-transactions`,
+    TransactionEP.FindTransactions
+  );
 };

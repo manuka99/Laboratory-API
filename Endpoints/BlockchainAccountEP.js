@@ -8,7 +8,6 @@ exports.FindBlockchainAccounts = async (req, res, next) => {
   const filteredQuery = FilterData(req.query, [
     "_id",
     "userID",
-    "userType",
     "publicKey",
     "name",
     "isLocked",
@@ -16,7 +15,6 @@ exports.FindBlockchainAccounts = async (req, res, next) => {
   ]);
 
   filteredQuery.userID = req.user._id;
-  filteredQuery.userType = req.user.type;
 
   if (req.query.search) filteredQuery.$text = { $search: req.query.search };
   if (req.query.accountType)
@@ -53,7 +51,7 @@ exports.FindBlockchainAccount = async (req, res, next) => {
 };
 
 exports.CreateBlockchainAccount = async (req, res, next) => {
-  const { _id, type, transactionSignatureID } = req.user;
+  const { _id, transactionSignatureID } = req.user;
   const {
     name,
     description,
@@ -99,7 +97,6 @@ exports.CreateBlockchainAccount = async (req, res, next) => {
   if (accountType == "wallet") {
     BlockchainAccountDao.CreateAccounts({
       userID: _id,
-      userType: type,
       name,
       description,
       accountType,
@@ -120,7 +117,6 @@ exports.CreateBlockchainAccount = async (req, res, next) => {
 
     BlockchainAccountDao.CreateAccounts({
       userID: _id,
-      userType: type,
       publicKey: keypair.publicKey,
       secretKey: base64EncryptedBCAccountSecretKey,
       name,

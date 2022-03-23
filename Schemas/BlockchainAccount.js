@@ -1,11 +1,15 @@
-const { Schema, model, Types } = require("mongoose");
+const {
+  Schema,
+  model,
+  Types: { ObjectId },
+} = require("mongoose");
 
 const BlockchainAccountSchema = new Schema(
   {
     userID: {
-      type: Types.ObjectId,
+      type: ObjectId,
       required: true,
-      ref: "user"
+      ref: "user",
     },
     publicKey: {
       type: String,
@@ -42,7 +46,7 @@ const BlockchainAccountSchema = new Schema(
       default: null,
     },
     lockTransaction: {
-      type: Types.ObjectId,
+      type: ObjectId,
       default: null,
       ref: "transaction",
     },
