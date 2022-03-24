@@ -4,7 +4,7 @@ const findAll = async (query, sort = { _id: "asc" }, limit = 10, page = 0) => {
   var entries = await Transaction.find(query)
     .sort(sort)
     .limit(limit)
-    .skip(limit * page);
+    .skip(limit * page).populate("owner signatures.user");
   return entries;
 };
 
@@ -20,7 +20,7 @@ const create = async (data) => {
 
 const update = async (filter, data) => {
   var entry = await Transaction.findOneAndUpdate(filter, data, {
-    upsert: true,
+    new: true,
     useFindAndModify: false,
   });
   return entry;

@@ -24,6 +24,7 @@ const TransactionSchema = new Schema(
         accountID: { type: String },
         sign: { type: String },
         user: { type: ObjectId, ref: "user" },
+        isAccepted: { type: Boolean, default: false },
       },
     ],
     owner: {
@@ -36,7 +37,6 @@ const TransactionSchema = new Schema(
 
 TransactionSchema.index({ network: 1, txnHash: 1 }, { unique: true });
 TransactionSchema.index({ network: 1, txnXdr: 1 }, { unique: true });
-TransactionSchema.index({ network: 1, signedTxnXdr: 1 }, { unique: true });
 TransactionSchema.index({
   title: "text",
   description: "text",

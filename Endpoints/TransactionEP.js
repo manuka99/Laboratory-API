@@ -62,7 +62,6 @@ exports.GetTxnUserPermission = async (txnQuery, userID) => {
       return data;
     }
   } catch (e) {
-    console.log(e)
     data.error = "Transaction is not available on cloud.";
     return data;
   }
@@ -72,13 +71,10 @@ exports.GetTxnUserPermission = async (txnQuery, userID) => {
 exports.SignTransaction = async (req, res, next) => {
   const { isOnline, accountID, xdr, network } = req.body;
   const { _id, transactionSignatureKey } = req.user;
-
+  const txnQuery = { txnXdr: xdr, network };
   if (isOnline) {
     // check permissions
-    const txnPem = await this.GetTxnUserPermission(
-      { txnXdr: xdr, network },
-      _id
-    );
+    const txnPem = await this.GetTxnUserPermission(txnQuery, _id);
     if (!txnPem || txnPem.error || !txnPem.isSign)
       return sendError(res, {
         message:
@@ -96,7 +92,7 @@ exports.SignTransaction = async (req, res, next) => {
     undefined,
     true
   )
-    .then((bcAccounts) => {
+    .then(async (bcAccounts) => {
       if (!bcAccounts || bcAccounts.length < 1)
         return sendError(res, {
           message:
@@ -114,6 +110,7 @@ exports.SignTransaction = async (req, res, next) => {
         var sig = tx.getKeypairSignature(keypair);
         if (isOnline) {
           // save sig and accountId
+          const onlineTxnObj = await TransactionDao.findOne(txnQuery);
           const eSignatures = onlineTxnObj.signatures;
           const prevSignIndex = eSignatures.findIndex(
             (eSignature) =>
@@ -188,7 +185,6 @@ exports.CreateTempTxn = async (req, res, next) => {
   const { _id } = req.user;
   try {
     const tx = TransactionBuilder.fromXDR(txnXdr, network);
-    console.log(tx.operations);
     const txnHash = tx.hash().toString("hex");
     const expire_at = FutureDate(TempTxnExpireAt);
     TransactionDao.create({
@@ -224,8 +220,9 @@ exports.AddSign = async (req, res, next) => {
   const { accountID, txnHash, network, sign } = req.body;
   const { _id } = req.user;
   try {
-    // check permissions
-    const txnPem = await this.GetTxnUserPermission({ txnHash, network }, _id);
+    // check
+    const txnQuery = { txnHash, network };
+    const txnPem = await this.GetTxnUserPermission(txnQuery, _id);
     if (!txnPem || txnPem.error || !txnPem.isSign)
       return sendError(res, {
         message:
@@ -233,6 +230,7 @@ exports.AddSign = async (req, res, next) => {
       });
     else {
       // save sig and accountId
+      const onlineTxnObj = await TransactionDao.findOne(txnQuery);
       const eSignatures = onlineTxnObj.signatures;
       const prevSignIndex = eSignatures.findIndex(
         (eSignature) =>
@@ -271,7 +269,7 @@ exports.AddSign = async (req, res, next) => {
     }
   } catch (e) {
     return sendError(res, {
-      message: "Transaction is not available on cloud.",
+      message: "Transaction is not available on cloud",
     });
   }
 };
@@ -279,7 +277,7 @@ exports.AddSign = async (req, res, next) => {
 // remove any sign (dirrect secret key)
 // only cloud txns
 exports.RemoveSign = async (req, res, next) => {
-  const { accountID, txnHash, network, sign } = req.body;
+  const { signID, accountID, txnHash, network, sign } = req.body;
   const { _id } = req.user;
   // if online confirm if the cdr is there and permission is present
   try {
@@ -289,7 +287,9 @@ exports.RemoveSign = async (req, res, next) => {
     const eSignatures = onlineTxnObj.signatures;
     const prevSign = eSignatures.find(
       (eSignature) =>
-        eSignature.accountID == accountID && eSignature.sign == sign
+        eSignature._id == signID &&
+        eSignature.accountID == accountID &&
+        eSignature.sign == sign
     );
     if (!prevSign)
       return sendError(res, {
@@ -297,25 +297,38 @@ exports.RemoveSign = async (req, res, next) => {
       });
 
     // permissions
-    if (onlineTxnObj.owner != _id && prevSign.user != _id)
+    if (onlineTxnObj.owner.toString() != _id && prevSign.user.toString() != _id)
       return sendError(res, {
         message:
           "You does not have required permisions to remove this signature from the transaction",
       });
 
+    const newSignatures = eSignatures.filter(
+      (eSignature) => eSignature._id != signID
+    );
+
+    const xdr = onlineTxnObj.txnXdr;
+    const tx = TransactionBuilder.fromXDR(xdr, network);
+
+    for (let i = 0; i < newSignatures.length; ++i) {
+      let eSign = newSignatures[i];
+      if (eSign.isAccepted) tx.addSignature(eSign.accountID, eSign.sign);
+    }
+
+    const signedTxnXdr = tx.toXDR();
+
     // remove signature
-    TransactionDao.update(onlineTxnObj._id, {
-      $pullAll: {
-        signatures: {
-          accountID,
-          sign,
-          user: _id,
-        },
-      },
-    })
-      .then(() =>
+    TransactionDao.update(
+      { _id: onlineTxnObj._id },
+      {
+        signatures: newSignatures,
+        signedTxnXdr,
+      }
+    )
+      .then((txn) =>
         sendSuccess(res, {
           message: `Signature was removed from the transaction successfully`,
+          txn,
         })
       )
       .catch((err) =>
@@ -328,6 +341,82 @@ exports.RemoveSign = async (req, res, next) => {
   } catch (e) {
     return sendError(res, {
       message: "Transaction is not available on cloud.",
+    });
+  }
+};
+
+exports.AcceptRejectSign = async (req, res, next) => {
+  const { signID, txnHash, network, isAccepted } = req.body;
+  const { _id } = req.user;
+
+  try {
+    const txnQuery = { txnHash, network };
+    const onlineTxnObjs = await TransactionDao.findAll(txnQuery);
+    if (!onlineTxnObjs || onlineTxnObjs.length == 0)
+      throw new Error("No transaction found on cloud");
+
+    const onlineTxnObj = onlineTxnObjs[0];
+
+    // if signature present
+    const eSignatures = onlineTxnObj.signatures;
+    const prevSign = eSignatures.find((eSignature) => eSignature._id == signID);
+    if (!prevSign)
+      return sendError(res, {
+        message: "Signature does not exist in the transaction",
+      });
+
+    const txnPem = await this.GetTxnUserPermission(txnQuery, _id);
+    if (
+      onlineTxnObj.owner != _id &&
+      (!txnPem || txnPem.error || !txnPem.isEdit)
+    )
+      return sendError(res, {
+        message:
+          "You does not have required permisions to apply changes to the transaction",
+      });
+
+    //  new signatures
+    const newSignatures = eSignatures.map((eSignature) => {
+      let upSig = eSignature;
+      if (eSignature._id == signID) upSig.isAccepted = isAccepted;
+      return upSig;
+    });
+
+    const xdr = onlineTxnObj.txnXdr;
+    const tx = TransactionBuilder.fromXDR(xdr, network);
+
+    for (let i = 0; i < newSignatures.length; ++i) {
+      let eSign = newSignatures[i];
+      if (eSign.isAccepted) tx.addSignature(eSign.accountID, eSign.sign);
+    }
+
+    const signedTxnXdr = tx.toXDR();
+    TransactionDao.update(
+      { _id: onlineTxnObj._id },
+      {
+        signedTxnXdr,
+        signatures: newSignatures,
+      }
+    )
+      .then((txn) =>
+        sendSuccess(res, {
+          message: `Signature was ${
+            isAccepted ? "accepted" : "rejected"
+          } successfully`,
+          signedTxnXdr,
+          txn,
+        })
+      )
+      .catch(() =>
+        sendError(res, {
+          message: `Error: Signature was not ${
+            isAccepted ? "accepted" : "rejected"
+          }`,
+        })
+      );
+  } catch (e) {
+    return sendError(res, {
+      message: "Unable to make changes to the transaction. More: " + e.message,
     });
   }
 };

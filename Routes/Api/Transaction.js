@@ -16,14 +16,13 @@ exports.TransactionRoutes = (router) => {
     TransactionEP.CreateTempTxn
   );
 
-  router.post(
-    `${RoutesEnum.USER}/add-sign`,
-    TransactionEP.AddSign
-  );
+  router.post(`${RoutesEnum.USER}/add-sign`, TransactionEP.AddSign);
+
+  router.post(`${RoutesEnum.USER}/remove-sign`, TransactionEP.RemoveSign);
 
   router.post(
-    `${RoutesEnum.USER}/remove-sign`,
-    TransactionEP.RemoveSign
+    `${RoutesEnum.USER}/signature-acceptance`,
+    TransactionEP.AcceptRejectSign
   );
 
   router.get(
