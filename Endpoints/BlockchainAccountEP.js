@@ -1,6 +1,7 @@
 const { sendSuccess, sendError, FilterData } = require("../Common/util");
 const BlockchainAccountDao = require("../Dao/BlockchainAccountDao");
 const RSA = require("../Util/RSA.service");
+const { SubmitTransactionsAPI } = require("../Util/StellarService");
 const { Validation } = require("../Validation");
 const { ValidateRequest } = require("../Middlewares/ValidateRequest");
 
@@ -68,7 +69,7 @@ exports.CreateBlockchainAccount = async (req, res, next) => {
     });
 
   const filteredData = JSON.parse(
-    JSON.stringify(req.body, ["name", "description", "isWallet", "isChannel"])
+    JSON.stringify(req.body, ["name", "description"])
   );
 
   // request body validation
@@ -110,24 +111,42 @@ exports.CreateBlockchainAccount = async (req, res, next) => {
       )
       .catch(next);
   } else if (accountType == "channel") {
-    const base64EncryptedBCAccountSecretKey = RSA.EncryptWithRawPublicKey(
-      transactionSignatureID,
-      keypair.secretKey
-    );
-
+    if (!sponsorID || !sponsorTX)
+      return sendError(res, {
+        message: `Invalid sponsoring information. Sponsor ID and its transaction is mandatory.`,
+      });
     BlockchainAccountDao.CreateAccounts({
       userID: _id,
-      publicKey: keypair.publicKey,
-      secretKey: base64EncryptedBCAccountSecretKey,
       name,
       description,
+      accountType,
+      publicKey: keypair.publicKey,
+      secretKey: keypair.secretKey,
+      sponsorID,
     })
-      .then(() =>
-        sendSuccess(res, {
-          message: `Blockchain account was saved successfully`,
+      .then((savedAccount) => {
+        SubmitTransactionsAPI(sponsorTX)
+          .then(() =>
+            sendSuccess(res, {
+              message: `Transaction channel was created successfully`,
+            })
+          )
+          .catch((error) => {
+            savedAccount.delete();
+            return sendError(res, {
+              message:
+                `An error occured when submiting the sponsoring transaction. More: ` +
+                error.message,
+            });
+          });
+      })
+      .catch((error) =>
+        sendError(res, {
+          message:
+            `An error occured when saving the sponsoring information. More: ` +
+            error.message,
         })
-      )
-      .catch(next);
+      );
   } else
     return sendError(res, {
       message: `Invalid account type.`,
@@ -194,7 +213,7 @@ exports.RemoveBlockchainAccount = async (req, res, next) => {
     .then(() =>
       sendSuccess(res, {
         message: `Account was removed successfully`,
-        id
+        id,
       })
     )
     .catch(() =>
